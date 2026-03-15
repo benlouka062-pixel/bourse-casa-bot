@@ -69,12 +69,6 @@
             margin-bottom: 20px;
         }
 
-        .grid-2 {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-        }
-
         .stat-card {
             background: rgba(0, 0, 0, 0.3);
             border-radius: 20px;
@@ -101,6 +95,7 @@
             border-radius: 40px;
             font-size: 11px;
             font-weight: 600;
+            white-space: nowrap;
         }
 
         .badge-achat {
@@ -121,6 +116,13 @@
             border: 1px solid #333;
         }
 
+        .badge-breakout {
+            background: rgba(255, 215, 0, 0.2);
+            color: #ffd700;
+            border: 1px solid #ffd700;
+            animation: pulse 2s infinite;
+        }
+
         .badge-support {
             background: rgba(0, 100, 255, 0.2);
             color: #4da6ff;
@@ -133,10 +135,16 @@
             border: 1px solid #ffaa33;
         }
 
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
         .action-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             padding: 16px 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
@@ -164,27 +172,30 @@
             font-weight: 700;
             font-size: 18px;
             text-align: right;
+            white-space: nowrap;
         }
 
         .action-details {
             display: flex;
-            gap: 16px;
-            margin-top: 8px;
+            gap: 12px;
+            margin: 8px 0;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         .level-indicator {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 4px;
             font-size: 13px;
+            color: #aaa;
         }
 
-        .proximity-badge {
-            font-size: 11px;
-            padding: 2px 8px;
-            border-radius: 20px;
-            background: rgba(255,255,255,0.05);
+        .badge-container {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 8px;
         }
 
         .footer {
@@ -208,8 +219,16 @@
         }
 
         @media (max-width: 600px) {
-            .grid-3, .grid-2 {
+            .grid-3 {
                 grid-template-columns: 1fr;
+            }
+            .action-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .action-price {
+                text-align: left;
+                width: 100%;
             }
         }
     </style>
@@ -280,19 +299,31 @@
                 let html = '';
                 
                 data.actions.forEach(a => {
-                    // Badge signal
+                    // Badge signal principal
                     let signalBadge = '';
-                    if (a.signal === 'ACHAT') signalBadge = '<span class="badge badge-achat">🟢 ACHAT</span>';
-                    else if (a.signal === 'VENTE') signalBadge = '<span class="badge badge-vente">🔴 VENTE</span>';
-                    else signalBadge = '<span class="badge badge-attente">⚪ ATTENTE</span>';
+                    if (a.signal === 'BREAKOUT') {
+                        signalBadge = '<span class="badge badge-breakout">🚀 BREAKOUT</span>';
+                    } else if (a.signal === 'ACHAT') {
+                        signalBadge = '<span class="badge badge-achat">🟢 ACHAT</span>';
+                    } else if (a.signal === 'VENTE') {
+                        signalBadge = '<span class="badge badge-vente">🔴 VENTE</span>';
+                    } else {
+                        signalBadge = '<span class="badge badge-attente">⚪ ATTENTE</span>';
+                    }
+                    
+                    // Badges breakout détaillé
+                    let breakoutDetail = '';
+                    if (a.breakout) {
+                        breakoutDetail = `<span class="badge badge-breakout">📊 Vol x${a.breakout.volume_ratio}</span>`;
+                    }
                     
                     // Badges proximité supports/résistances
-                    let proximityHtml = '';
+                    let proximityBadges = '';
                     if (a.support && a.dist_support !== null && Math.abs(a.dist_support) < 3) {
-                        proximityHtml += `<span class="badge badge-support">⬇️ Support à ${a.dist_support}%</span>`;
+                        proximityBadges += `<span class="badge badge-support">⬇️ S ${a.dist_support}%</span>`;
                     }
                     if (a.resistance && a.dist_resistance !== null && Math.abs(a.dist_resistance) < 3) {
-                        proximityHtml += `<span class="badge badge-resistance">⬆️ Résistance à ${a.dist_resistance}%</span>`;
+                        proximityBadges += `<span class="badge badge-resistance">⬆️ R ${a.dist_resistance}%</span>`;
                     }
                     
                     html += `
@@ -302,18 +333,22 @@
                                     <span class="action-symbol">${a.sym}</span>
                                     <span class="action-name">${a.nom || ''}</span>
                                 </div>
+                                
                                 <div class="action-details">
                                     <div class="level-indicator">
                                         <span>📊 RSI: ${a.rsi || '--'}</span>
                                     </div>
-                                    ${a.support ? `<div class="level-indicator"><span>🛡️ S: ${a.support}</span></div>` : ''}
-                                    ${a.resistance ? `<div class="level-indicator"><span>🧱 R: ${a.resistance}</span></div>` : ''}
-                                    <div class="proximity-badge">${signalBadge}</div>
+                                    ${a.support ? `<div class="level-indicator"><span>🛡️ S:${a.support}</span></div>` : ''}
+                                    ${a.resistance ? `<div class="level-indicator"><span>🧱 R:${a.resistance}</span></div>` : ''}
                                 </div>
-                                <div style="margin-top: 8px; display: flex; gap: 8px;">
-                                    ${proximityHtml}
+                                
+                                <div class="badge-container">
+                                    ${signalBadge}
+                                    ${breakoutDetail}
+                                    ${proximityBadges}
                                 </div>
                             </div>
+                            
                             <div class="action-price">
                                 ${a.prix ? a.prix.toFixed(2) + ' DH' : '--'}
                             </div>
