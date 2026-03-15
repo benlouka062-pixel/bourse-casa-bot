@@ -135,6 +135,24 @@
             border: 1px solid #ff99aa;
         }
 
+        .badge-sentiment-positif {
+            background: rgba(0, 255, 0, 0.15);
+            color: #90ff90;
+            border: 1px solid #90ff90;
+        }
+
+        .badge-sentiment-negatif {
+            background: rgba(255, 0, 0, 0.15);
+            color: #ff9090;
+            border: 1px solid #ff9090;
+        }
+
+        .badge-sentiment-neutre {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            border: 1px solid #444;
+        }
+
         .badge-support {
             background: rgba(0, 100, 255, 0.2);
             color: #4da6ff;
@@ -208,6 +226,30 @@
             gap: 6px;
             flex-wrap: wrap;
             margin-top: 8px;
+        }
+
+        .news-tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .news-tooltip:hover .tooltip-content {
+            display: block;
+        }
+
+        .tooltip-content {
+            display: none;
+            position: absolute;
+            background: #1a1e2a;
+            border: 1px solid #00ffb4;
+            border-radius: 12px;
+            padding: 12px;
+            width: 250px;
+            bottom: 25px;
+            left: 0;
+            z-index: 100;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
 
         .footer {
@@ -329,6 +371,29 @@
                         signalBadge = '<span class="badge badge-attente">⚪ ATTENTE</span>';
                     }
                     
+                    // Badge sentiment
+                    let sentimentBadge = '';
+                    if (a.sentiment) {
+                        let sentimentClass = 'badge-sentiment-neutre';
+                        if (a.sentiment.label === '🟢 POSITIF') sentimentClass = 'badge-sentiment-positif';
+                        if (a.sentiment.label === '🔴 NEGATIF') sentimentClass = 'badge-sentiment-negatif';
+                        
+                        sentimentBadge = `
+                            <span class="badge ${sentimentClass} news-tooltip">
+                                📰 ${a.sentiment.label}
+                                <span class="tooltip-content">
+                                    ${a.sentiment.news.map(n => 
+                                        `<div style="margin-bottom: 8px; font-size: 11px;">
+                                            <b>${n.source}</b><br>
+                                            ${n.titre}<br>
+                                            <span style="color: #888;">${n.sentiment.label}</span>
+                                        </div>`
+                                    ).join('')}
+                                </span>
+                            </span>
+                        `;
+                    }
+                    
                     // Badges breakout détaillé
                     let breakoutDetail = '';
                     if (a.breakout) {
@@ -372,6 +437,7 @@
                                 
                                 <div class="badge-container">
                                     ${signalBadge}
+                                    ${sentimentBadge}
                                     ${breakoutDetail}
                                     ${divergenceDetail}
                                     ${proximityBadges}
