@@ -1,0 +1,290 @@
+import yfinance as yf
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+import json
+
+class Backtest:
+    """
+    Moteur de backtesting pour les actions de la Bourse de Casa
+    Permet de tester des stratégies sur historique
+    """
+    
+    def __init__(self, symbole, date_debut, date_fin=None):
+        """
+        Initialise un backtest pour un symbole sur une période
+        
+        Args:
+            symbole: "IAM", "ATW", etc.
+            date_debut: "2024-01-01"
+            date_fin: "2024-12-31" (si None, utilise aujourd'hui)
+        """
+        self.symbole = symbole
+        self.ticker = f"{symbole}.MS"
+        self.date_debut = date_debut
+        self.date_fin = date_fin or datetime.now().strftime("%Y-%m-%d")
+        self.donnees = None
+        self.resultats = {}
+        
+    def charger_donnees(self):
+        """Charge l'historique des prix depuis yfinance"""
+        print(f"📥 Chargement des données pour {self.symbole}...")
+        try:
+            self.donnees = yf.download(
+                self.ticker, 
+                start=self.date_debut, 
+                end=self.date_fin,
+                progress=False
+            )
+            
+            if self.donnees.empty:
+                print(f"❌ Aucune donnée pour {self.symbole}")
+                return False
+            
+            print(f"✅ {len(self.donnees)} jours de données chargés")
+            print(f"   Période: {self.date_debut} → {self.date_fin}")
+            print(f"   Prix: {self.donnees['Close'].iloc[0]:.2f} → {self.donnees['Close'].iloc[-1]:.2f} DH")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Erreur: {e}")
+            return False
+    
+    def calculer_rsi(self, prix, periode=14):
+        """Calcule le RSI pour une série de prix"""
+        delta = prix.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=periode).mean()
+        perte = (-delta.where(delta < 0, 0)).rolling(window=periode).mean()
+        rs = gain / perte
+        rsi = 100 - (100 / (1 + rs))
+        return rsi
+    
+    def calculer_macd(self, prix, rapide=12, lent=26, signal=9):
+        """Calcule le MACD"""
+        ema_rapide = prix.ewm(span=rapide, adjust=False).mean()
+        ema_lente = prix.ewm(span=lent, adjust=False).mean()
+        macd = ema_rapide - ema_lente
+        ligne_signal = macd.ewm(span=signal, adjust=False).mean()
+        histogramme = macd - ligne_signal
+        return macd, ligne_signal, histogramme
+    
+    def strategie_rsi_cross(self, seuil_bas=30, seuil_haut=70):
+        """
+        Stratégie: Achat quand RSI passe au-dessus de seuil_bas
+                  Vente quand RSI passe au-dessus de seuil_haut
+        """
+        if self.donnees is None:
+            if not self.charger_donnees():
+                return None
+        
+        df = self.donnees.copy()
+        
+        # Calcul RSI
+        df['RSI'] = self.calculer_rsi(df['Close'])
+        
+        # Signaux
+        df['Signal'] = 0
+        df.loc[df['RSI'] < seuil_bas, 'Signal'] = 1   # Zone achat
+        df.loc[df['RSI'] > seuil_haut, 'Signal'] = -1 # Zone vente
+        
+        # Positions (on garde la position jusqu'au signal inverse)
+        df['Position'] = df['Signal'].replace(to_replace=0, method='ffill').fillna(0)
+        
+        # Calcul des rendements
+        df['Rendement_Journalier'] = df['Close'].pct_change()
+        df['Rendement_Strategie'] = df['Rendement_Journalier'] * df['Position'].shift(1)
+        
+        # Performance cumulée
+        df['Cumul_Strategie'] = (1 + df['Rendement_Strategie'].fillna(0)).cumprod()
+        df['Cumul_Achat'] = (1 + df['Rendement_Journalier'].fillna(0)).cumprod()
+        
+        # Stats
+        trades = df[df['Signal'] != 0]
+        
+        self.resultats = {
+            'strategie': 'RSI Cross',
+            'symbole': self.symbole,
+            'periode': f"{self.date_debut} → {self.date_fin}",
+            'rendement_strategie': round((df['Cumul_Strategie'].iloc[-1] - 1) * 100, 2),
+            'rendement_achat': round((df['Cumul_Achat'].iloc[-1] - 1) * 100, 2),
+            'nombre_trades': len(trades),
+            'trades_gagnants': len(trades[trades['Rendement_Strategie'] > 0]),
+            'trades_perdants': len(trades[trades['Rendement_Strategie'] < 0]),
+            'ratio_victoire': round(len(trades[trades['Rendement_Strategie'] > 0]) / len(trades) * 100 if len(trades) > 0 else 0, 2),
+            'max_drawdown': round((df['Cumul_Strategie'].cummax() - df['Cumul_Strategie']).max() * 100, 2)
+        }
+        
+        # Derniers signaux
+        derniers_signaux = df[df['Signal'] != 0].tail(3)
+        self.resultats['derniers_signaux'] = [
+            {
+                'date': idx.strftime('%Y-%m-%d'),
+                'type': 'ACHAT' if row['Signal'] == 1 else 'VENTE',
+                'prix': round(row['Close'], 2),
+                'rsi': round(row['RSI'], 2)
+            }
+            for idx, row in derniers_signaux.iterrows()
+        ]
+        
+        return self.resultats
+    
+    def strategie_macd_cross(self):
+        """
+        Stratégie: Achat quand MACD passe au-dessus du signal
+                  Vente quand MACD passe en dessous du signal
+        """
+        if self.donnees is None:
+            if not self.charger_donnees():
+                return None
+        
+        df = self.donnees.copy()
+        
+        # Calcul MACD
+        df['MACD'], df['Signal'], df['Histogramme'] = self.calculer_macd(df['Close'])
+        
+        # Signaux (cross)
+        df['Signal_Position'] = 0
+        df.loc[df['MACD'] > df['Signal'], 'Signal_Position'] = 1
+        df.loc[df['MACD'] < df['Signal'], 'Signal_Position'] = -1
+        
+        # Détection des croisements
+        df['Cross'] = df['Signal_Position'].diff()
+        
+        df['Signal_Trade'] = 0
+        df.loc[df['Cross'] == 2, 'Signal_Trade'] = 1   # Passage de -1 à 1 (achat)
+        df.loc[df['Cross'] == -2, 'Signal_Trade'] = -1 # Passage de 1 à -1 (vente)
+        
+        # Positions
+        df['Position'] = df['Signal_Trade'].replace(to_replace=0, method='ffill').fillna(0)
+        
+        # Calcul des rendements
+        df['Rendement_Journalier'] = df['Close'].pct_change()
+        df['Rendement_Strategie'] = df['Rendement_Journalier'] * df['Position'].shift(1)
+        
+        # Performance cumulée
+        df['Cumul_Strategie'] = (1 + df['Rendement_Strategie'].fillna(0)).cumprod()
+        df['Cumul_Achat'] = (1 + df['Rendement_Journalier'].fillna(0)).cumprod()
+        
+        # Stats
+        trades = df[df['Signal_Trade'] != 0]
+        
+        return {
+            'strategie': 'MACD Cross',
+            'symbole': self.symbole,
+            'rendement_strategie': round((df['Cumul_Strategie'].iloc[-1] - 1) * 100, 2),
+            'rendement_achat': round((df['Cumul_Achat'].iloc[-1] - 1) * 100, 2),
+            'nombre_trades': len(trades),
+            'trades_gagnants': len(trades[trades['Rendement_Strategie'] > 0]),
+        }
+    
+    def strategie_breakout(self, periode=20, seuil_volume=1.5):
+        """
+        Stratégie: Achat quand prix > résistance avec volume élevé
+        """
+        if self.donnees is None:
+            if not self.charger_donnees():
+                return None
+        
+        df = self.donnees.copy()
+        
+        # Résistance = plus haut sur période
+        df['Resistance'] = df['High'].rolling(window=periode).max().shift(1)
+        
+        # Volume moyen
+        df['Volume_Moyen'] = df['Volume'].rolling(window=periode).mean().shift(1)
+        
+        # Détection breakout
+        df['Breakout'] = (df['Close'] > df['Resistance']) & (df['Volume'] > df['Volume_Moyen'] * seuil_volume)
+        
+        # Signaux
+        df['Signal_Trade'] = 0
+        df.loc[df['Breakout'], 'Signal_Trade'] = 1  # Achat sur breakout
+        
+        # Position (on reste investi jusqu'à nouvelle condition)
+        df['Position'] = df['Signal_Trade'].replace(to_replace=0, method='ffill').fillna(0)
+        
+        # Calcul des rendements
+        df['Rendement_Journalier'] = df['Close'].pct_change()
+        df['Rendement_Strategie'] = df['Rendement_Journalier'] * df['Position'].shift(1)
+        
+        # Performance cumulée
+        df['Cumul_Strategie'] = (1 + df['Rendement_Strategie'].fillna(0)).cumprod()
+        df['Cumul_Achat'] = (1 + df['Rendement_Journalier'].fillna(0)).cumprod()
+        
+        return {
+            'strategie': 'Breakout Volume',
+            'symbole': self.symbole,
+            'rendement_strategie': round((df['Cumul_Strategie'].iloc[-1] - 1) * 100, 2),
+            'rendement_achat': round((df['Cumul_Achat'].iloc[-1] - 1) * 100, 2),
+            'nombre_breakouts': df['Breakout'].sum()
+        }
+    
+    def comparer_strategies(self):
+        """Compare plusieurs stratégies sur la même période"""
+        resultats = []
+        
+        # Tester différentes stratégies
+        for strategie in ['rsi', 'macd', 'breakout']:
+            if strategie == 'rsi':
+                res = self.strategie_rsi_cross()
+            elif strategie == 'macd':
+                res = self.strategie_macd_cross()
+            else:
+                res = self.strategie_breakout()
+            
+            if res:
+                resultats.append(res)
+        
+        return resultats
+    
+    def exporter_json(self, fichier="backtest_results.json"):
+        """Exporte les résultats en JSON"""
+        with open(fichier, 'w') as f:
+            json.dump(self.resultats, f, indent=2, default=str)
+        print(f"✅ Résultats exportés dans {fichier}")
+
+def tester_toutes_actions(actions=None, date_debut="2024-01-01"):
+    """Teste une stratégie sur plusieurs actions"""
+    if actions is None:
+        actions = ["IAM", "ATW", "BCP", "CIH", "MNG", "ADH"]
+    
+    print("\n" + "="*60)
+    print("📊 BACKTEST MULTI-ACTIONS")
+    print("="*60)
+    
+    for sym in actions:
+        print(f"\n🔍 {sym}")
+        bt = Backtest(sym, date_debut)
+        resultat = bt.strategie_rsi_cross()
+        
+        if resultat:
+            print(f"  📈 Stratégie: {resultat['rendement_strategie']}%")
+            print(f"  💰 Achat simple: {resultat['rendement_achat']}%")
+            print(f"  🎯 Trades: {resultat['nombre_trades']} ({resultat['ratio_victoire']}% gagnants)")
+            print(f"  📉 Drawdown max: {resultat['max_drawdown']}%")
+
+if __name__ == "__main__":
+    print("\n" + "="*60)
+    print("🚀 MOTEUR DE BACKTESTING - BOURSE DE CASA")
+    print("="*60)
+    
+    # Test sur IAM
+    bt = Backtest("IAM", "2024-01-01")
+    resultat = bt.strategie_rsi_cross()
+    
+    if resultat:
+        print(f"\n📊 RÉSULTATS POUR IAM")
+        print(f"   Période: {resultat['periode']}")
+        print(f"   Rendement stratégie: {resultat['rendement_strategie']}%")
+        print(f"   Rendement achat simple: {resultat['rendement_achat']}%")
+        print(f"   Nombre de trades: {resultat['nombre_trades']}")
+        print(f"   Ratio victoire: {resultat['ratio_victoire']}%")
+        print(f"   Drawdown max: {resultat['max_drawdown']}%")
+        
+        if resultat['derniers_signaux']:
+            print(f"\n🔄 Derniers signaux:")
+            for s in resultat['derniers_signaux']:
+                print(f"   {s['date']}: {s['type']} à {s['prix']} DH (RSI: {s['rsi']})")
+    
+    # Test multi-actions
+    tester_toutes_actions()
