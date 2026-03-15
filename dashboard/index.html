@@ -123,6 +123,18 @@
             animation: pulse 2s infinite;
         }
 
+        .badge-div-hauss {
+            background: rgba(0, 200, 255, 0.2);
+            color: #4dc3ff;
+            border: 1px solid #4dc3ff;
+        }
+
+        .badge-div-baisse {
+            background: rgba(255, 100, 150, 0.2);
+            color: #ff99aa;
+            border: 1px solid #ff99aa;
+        }
+
         .badge-support {
             background: rgba(0, 100, 255, 0.2);
             color: #4da6ff;
@@ -303,6 +315,12 @@
                     let signalBadge = '';
                     if (a.signal === 'BREAKOUT') {
                         signalBadge = '<span class="badge badge-breakout">🚀 BREAKOUT</span>';
+                    } else if (a.signal === 'DIVERGENCE') {
+                        if (a.divergence && a.divergence.type === 'DIVERGENCE_HAUSSIERE') {
+                            signalBadge = '<span class="badge badge-div-hauss">📈 DIV HAUSSIÈRE</span>';
+                        } else {
+                            signalBadge = '<span class="badge badge-div-baisse">📉 DIV BAISSIÈRE</span>';
+                        }
                     } else if (a.signal === 'ACHAT') {
                         signalBadge = '<span class="badge badge-achat">🟢 ACHAT</span>';
                     } else if (a.signal === 'VENTE') {
@@ -315,6 +333,16 @@
                     let breakoutDetail = '';
                     if (a.breakout) {
                         breakoutDetail = `<span class="badge badge-breakout">📊 Vol x${a.breakout.volume_ratio}</span>`;
+                    }
+                    
+                    // Badge divergence détaillé
+                    let divergenceDetail = '';
+                    if (a.divergence && a.signal !== 'DIVERGENCE') {
+                        if (a.divergence.type === 'DIVERGENCE_HAUSSIERE') {
+                            divergenceDetail = '<span class="badge badge-div-hauss">📈 DIV</span>';
+                        } else {
+                            divergenceDetail = '<span class="badge badge-div-baisse">📉 DIV</span>';
+                        }
                     }
                     
                     // Badges proximité supports/résistances
@@ -345,6 +373,7 @@
                                 <div class="badge-container">
                                     ${signalBadge}
                                     ${breakoutDetail}
+                                    ${divergenceDetail}
                                     ${proximityBadges}
                                 </div>
                             </div>
