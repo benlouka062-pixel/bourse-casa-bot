@@ -11,7 +11,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+        with:
+          path: bourse-casa-bot
+          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -22,7 +24,7 @@ jobs:
           pip install yfinance requests pandas
           
       - name: Debug - list files
-        run: ls -la
+        run: ls -la bourse-casa-bot/
         
       - name: Run bot
-        run: python bot.py
+        run: python bourse-casa-bot/bot.py
