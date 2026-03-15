@@ -1,4 +1,5 @@
 import yfinance as yf
+import requests
 import json
 import time
 import os
@@ -74,40 +75,20 @@ def get_volume_data(ticker):
         pass
     return None, None
 
-# === NOUVELLE FONCTION : DÉTECTION DIVERGENCES RSI ===
 def detecter_divergence(prix_historique, rsi_historique, periode=14):
-    """
-    Détecte les divergences entre prix et RSI
-    """
     if len(prix_historique) < periode * 2 or len(rsi_historique) < periode * 2:
         return None
-    
-    # Derniers points
     prix_recents = prix_historique[-periode:]
     rsi_recents = rsi_historique[-periode:]
-    
-    # Période précédente
     prix_prec = prix_historique[-periode*2:-periode]
     rsi_prec = rsi_historique[-periode*2:-periode]
-    
-    # Divergence haussière (prix plus bas, RSI plus haut)
     if min(prix_recents) < min(prix_prec) and min(rsi_recents) > min(rsi_prec):
-        return {
-            "type": "DIVERGENCE_HAUSSIERE",
-            "message": "📈 Prix plus bas, RSI plus haut → retournement haussier possible"
-        }
-    
-    # Divergence baissière (prix plus haut, RSI plus bas)
+        return {"type": "DIVERGENCE_HAUSSIERE", "message": "📈 Prix plus bas, RSI plus haut → retournement haussier possible"}
     if max(prix_recents) > max(prix_prec) and max(rsi_recents) < max(rsi_prec):
-        return {
-            "type": "DIVERGENCE_BAISSIERE",
-            "message": "📉 Prix plus haut, RSI plus bas → retournement baissier possible"
-        }
-    
+        return {"type": "DIVERGENCE_BAISSIERE", "message": "📉 Prix plus haut, RSI plus bas → retournement baissier possible"}
     return None
 
 def calculer_rsi_historique(prix_historique):
-    """Calcule le RSI pour toute la série historique"""
     rsi_historique = []
     for i in range(len(prix_historique)):
         if i < 14:
@@ -115,6 +96,73 @@ def calculer_rsi_historique(prix_historique):
         else:
             rsi_historique.append(calculer_rsi(prix_historique[:i+1]))
     return rsi_historique
+
+# === NOUVELLE FONCTION : ALERTES CONDITIONNELLES ===
+def verifier_alertes(actions_data):
+    """Vérifie les conditions d'alerte et retourne les messages"""
+    alertes = []
+    
+    # === SEUILS PERSONNALISABLES (modifie ici tes conditions) ===
+    SEUILS = {
+        "IAM": {
+            "prix_max": 150,        # Alerte si IAM > 150 DH
+            "prix_min": 140,        # Alerte si IAM < 140 DH
+            "rsi_min": 30,           # Alerte si RSI < 30
+            "rsi_max": 70            # Alerte si RSI > 70
+        },
+        "ADH": {
+            "prix_min": 24,          # Alerte si ADH < 24 DH
+            "rsi_max": 70            # Alerte si RSI > 70
+        },
+        "MNG": {
+            "prix_max": 2000,        # Alerte si MNG > 2000 DH
+            "rsi_min": 30            # Alerte si RSI < 30
+        },
+        "ATW": {
+            "prix_max": 460,         # Alerte si ATW > 460 DH
+            "prix_min": 440          # Alerte si ATW < 440 DH
+        }
+        # Ajoute d'autres actions ici
+    }
+    
+    for action in actions_data:
+        sym = action["sym"]
+        prix = action.get("prix")
+        rsi = action.get("rsi")
+        
+        if sym in SEUILS:
+            seuil = SEUILS[sym]
+            
+            # Alerte prix maximum
+            if "prix_max" in seuil and prix and prix > seuil["prix_max"]:
+                alertes.append(f"🚨 *{sym}* a dépassé {seuil['prix_max']} DH (actuel: {prix} DH)")
+            
+            # Alerte prix minimum
+            if "prix_min" in seuil and prix and prix < seuil["prix_min"]:
+                alertes.append(f"🚨 *{sym}* est passé sous {seuil['prix_min']} DH (actuel: {prix} DH)")
+            
+            # Alerte RSI survendu
+            if "rsi_min" in seuil and rsi and rsi < seuil["rsi_min"]:
+                alertes.append(f"📉 *{sym}* RSI survendu: {rsi} (seuil: {seuil['rsi_min']})")
+            
+            # Alerte RSI surachat
+            if "rsi_max" in seuil and rsi and rsi > seuil["rsi_max"]:
+                alertes.append(f"📈 *{sym}* RSI surachat: {rsi} (seuil: {seuil['rsi_max']})")
+    
+    return alertes
+
+def send_telegram_message(chat_id, text):
+    """Envoie un message Telegram"""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "Markdown"
+    }
+    try:
+        requests.post(url, json=payload)
+    except:
+        pass
 
 def get_price_and_rsi(sym, ticker):
     try:
@@ -124,8 +172,6 @@ def get_price_and_rsi(sym, ticker):
         
         prix = round(hist['Close'].iloc[-1], 2)
         prix_list = hist['Close'].tolist()
-        
-        # Calcul RSI pour toute la série
         rsi_historique = calculer_rsi_historique(prix_list)
         rsi_actuel = rsi_historique[-1]
         
@@ -135,11 +181,8 @@ def get_price_and_rsi(sym, ticker):
         
         volume_actuel, volume_moyen = get_volume_data(ticker)
         breakout = detecter_breakout(prix, resistance, volume_actuel, volume_moyen)
-        
-        # === NOUVEAU : détection divergence ===
         divergence = detecter_divergence(prix_list, rsi_historique)
         
-        # Signal (priorité aux breakouts, puis divergences, puis RSI)
         if breakout:
             signal = "BREAKOUT"
         elif divergence:
@@ -165,7 +208,6 @@ def get_price_and_rsi(sym, ticker):
         
         if breakout:
             result["breakout"] = breakout
-        
         if divergence:
             result["divergence"] = divergence
         
@@ -223,6 +265,14 @@ def main():
     if not masi and ancien_cache.get('masi'):
         masi = ancien_cache['masi']
     
+    # === NOUVEAU : Vérification des alertes ===
+    alertes = verifier_alertes(actions_data)
+    if alertes:
+        message_alertes = "🚨 *ALERTES ACTIONS*\n\n" + "\n".join(alertes)
+        send_telegram_message(CHAT_ID, message_alertes)
+        print(f"📢 {len(alertes)} alerte(s) envoyée(s)")
+    
+    # Structure finale
     output = {
         "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
         "source": source_globale,
