@@ -7,7 +7,7 @@ import asyncio
 
 # === CONFIGURATION ===
 BOT_TOKEN = "8342446918:AAG4cuQKWZypIeAmfTy45PB0r7hQ8QFjhqo"
-WEBHOOK_SECRET = "taoussi123"  # change si tu veux
+WEBHOOK_SECRET = "taoussi123"
 
 # === LOGGING ===
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +22,7 @@ app = Flask(__name__)
 
 # === COMMANDES ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Bot Taoussi actif sur Railway !")
+    await update.message.reply_text("✅ Bot Taoussi actif sur Railway (webhook) !")
 
 async def graph(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
@@ -48,23 +48,47 @@ def webhook():
 
 @app.route("/")
 def index():
-    return "✅ Bot Taoussi is running on Railway!"
+    return "✅ Bot Taoussi is running on Railway (webhook)!"
 
 @app.route("/health")
 def health():
     return "OK", 200
 
-# === WEBHOOK SETUP (à exécuter UNE FOIS) ===
+# === WEBHOOK SETUP (s'exécute au démarrage) ===
 def set_webhook():
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
-    webhook_url = f"https://{os.environ.get('RAILWAY_STATIC_URL', 'ton-app')}/webhook/{BOT_TOKEN}"
-    data = {"url": webhook_url, "secret_token": WEBHOOK_SECRET}
     import requests
-    r = requests.post(url, json=data)
-    logger.info(f"Webhook set: {r.json()}")
+    railway_url = os.environ.get('RAILWAY_PUBLIC_DOMAIN', request.host if 'request' in dir() else None)
+    
+    if not railway_url:
+        logger.error("❌ Impossible de déterminer l'URL Railway")
+        return False
+    
+    webhook_url = f"https://{railway_url}/webhook/{BOT_TOKEN}"
+    
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook"
+    data = {
+        "url": webhook_url,
+        "secret_token": WEBHOOK_SECRET,
+        "allowed_updates": ["message", "callback_query"]
+    }
+    
+    try:
+        r = requests.post(url, json=data)
+        logger.info(f"✅ Webhook configuré: {r.json()}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Erreur webhook: {e}")
+        return False
 
 # === DÉMARRAGE ===
 if __name__ == "__main__":
+    # Attendre un peu que Railway donne l'URL
+    import time
+    time.sleep(5)
+    
+    # Configurer le webhook
     set_webhook()
+    
+    # Lancer Flask
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
