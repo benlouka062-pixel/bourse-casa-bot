@@ -2,39 +2,79 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taoussi Trader Pro · BVC Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>TAOUSSI TRADER · COCKPIT PRO</title>
+    
+    <!-- Tailwind pour le style rapide -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js pour les graphiques -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Alpine.js pour l'interactivité -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <!-- Font Awesome pour les icônes -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf pour export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
         * { font-family: 'Inter', system-ui, sans-serif; }
         body { background: #0a0a0a; }
-        .glass-card { background: rgba(26, 26, 26, 0.95); backdrop-filter: blur(10px); }
+        
+        .glass-card { 
+            background: rgba(26, 26, 26, 0.95); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
         .trend-up { color: #10b981; }
         .trend-down { color: #ef4444; }
+        
+        .badge-achat { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
+        .badge-vente { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
+        .badge-breakout { background: rgba(255, 215, 0, 0.2); color: #ffd700; border: 1px solid #ffd700; animation: pulse 1.5s infinite; }
+        .badge-divergence { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid #3b82f6; }
+        .badge-info { background: rgba(255,255,255,0.1); color: #aaa; border: 1px solid #333; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        
         .hover-glow:hover { box-shadow: 0 0 15px rgba(16, 185, 129, 0.3); }
+        
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #1a1a1a; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #10b981; }
+        
+        .detail-panel-enter {
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body class="text-gray-200 p-4 min-h-screen custom-scrollbar">
 
-<div x-data="taoussiDashboard()" x-init="init(); startRealTimeUpdates()" class="max-w-7xl mx-auto">
+<div x-data="taoussiCockpit()" x-init="init(); setInterval(loadData, 300000)" class="max-w-7xl mx-auto">
     
-    <!-- HEADER -->
+    <!-- ===== HEADER ===== -->
     <div class="glass-card rounded-xl p-4 mb-4 flex flex-wrap items-center justify-between border border-gray-800">
         <div class="flex items-center space-x-3">
             <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
                 <i class="fas fa-chart-line text-white text-xl"></i>
             </div>
             <div>
-                <h1 class="text-2xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">Taoussi Trader Pro</h1>
-                <p class="text-xs text-gray-500">Bourse de Casablanca · Temps réel</p>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
+                    TAOUSSI COCKPIT
+                </h1>
+                <p class="text-xs text-gray-500">Bourse de Casablanca · Données réelles</p>
             </div>
         </div>
         
@@ -43,117 +83,77 @@
                 <div class="text-sm text-gray-500">Heure Maroc</div>
                 <div class="text-2xl font-mono font-bold" x-text="moroccoTime"></div>
             </div>
-            <button @click="refreshData()" class="bg-gray-800 hover:bg-gray-700 p-3 rounded-xl transition-all hover:rotate-180 duration-500">
+            <button @click="loadData" class="bg-gray-800 hover:bg-gray-700 p-3 rounded-xl transition-all hover:rotate-180 duration-500">
                 <i class="fas fa-sync-alt" :class="{ 'animate-spin': loading }"></i>
             </button>
         </div>
     </div>
 
-    <!-- SECTION HAUT : MASI & VOLUME -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-        <div class="glass-card rounded-xl p-4 border border-gray-800 col-span-2">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-gray-500 text-sm">MASI · Indice global</p>
-                    <div class="text-3xl font-bold" x-text="formatNumber(masi.value)"></div>
-                    <div class="flex items-center mt-1">
-                        <span :class="masi.change >= 0 ? 'trend-up' : 'trend-down'" class="font-semibold" x-text="(masi.change >= 0 ? '+' : '') + masi.change.toFixed(2) + '%'"></span>
-                        <i class="fas fa-arrow-up ml-1" :class="masi.change >= 0 ? 'trend-up' : 'trend-down rotate-180'"></i>
-                    </div>
-                </div>
-                <canvas id="masiSparkline" width="120" height="40"></canvas>
-            </div>
-        </div>
-        
-        <div class="glass-card rounded-xl p-4 border border-gray-800">
-            <p class="text-gray-500 text-sm">Volume total</p>
-            <div class="text-2xl font-bold" x-text="formatVolume(totalVolume)"></div>
-            <div class="text-xs text-gray-500 mt-2">+12.5% vs J-1</div>
-        </div>
-        
-        <div class="glass-card rounded-xl p-4 border border-gray-800">
-            <p class="text-gray-500 text-sm">Variation MASI</p>
-            <div class="text-2xl font-bold" :class="masi.change >= 0 ? 'trend-up' : 'trend-down'" x-text="(masi.change >= 0 ? '+' : '') + masi.change.toFixed(2) + '%'"></div>
-            <div class="text-xs text-gray-500 mt-2">+245 pts aujourd'hui</div>
-        </div>
-    </div>
-
-    <!-- LAYOUT 3 COLONNES -->
+    <!-- ===== LAYOUT PRINCIPAL ===== -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
-        <!-- COLONNE GAUCHE : MÉTAUX & RISQUES -->
+        <!-- === COLONNE GAUCHE : MÉTAUX & STATS === -->
         <div class="lg:col-span-3 space-y-4">
-            <!-- Météo des métaux -->
+            <!-- CARTE MÉTAUX PRÉCIEUX -->
             <div class="glass-card rounded-xl p-4 border border-gray-800">
-                <h3 class="text-sm font-semibold text-gray-400 mb-3"><i class="fas fa-coins text-yellow-500 mr-2"></i>MÉTAUX PRÉCIEUX</h3>
+                <h3 class="text-sm font-semibold text-gray-400 mb-3">
+                    <i class="fas fa-coins text-yellow-500 mr-2"></i>MÉTAUX PRÉCIEUX
+                </h3>
                 <div class="space-y-2">
-                    <template x-for="metal in metals.precious" :key="metal.name">
+                    <template x-for="metal in ['XAU', 'XAG']" :key="metal">
                         <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg transition">
-                            <span class="text-gray-300" x-text="metal.name"></span>
+                            <span class="text-gray-300" x-text="metal === 'XAU' ? 'Or' : 'Argent'"></span>
                             <div class="text-right">
-                                <span class="font-mono" x-text="metal.price"></span>
-                                <span :class="metal.change >= 0 ? 'trend-up' : 'trend-down'" class="text-sm ml-2" x-text="(metal.change >= 0 ? '+' : '') + metal.change + '%'"></span>
+                                <span class="font-mono" x-text="metals.precieux?.[metal]?.prix?.toFixed(2) || '---'"></span>
+                                <span class="text-sm ml-2" :class="(metals.precieux?.[metal]?.variation_pct || 0) >= 0 ? 'trend-up' : 'trend-down'" 
+                                      x-text="(metals.precieux?.[metal]?.variation_pct ? (metals.precieux[metal].variation_pct > 0 ? '+' : '') + metals.precieux[metal].variation_pct.toFixed(1) + '%' : '---')"></span>
                             </div>
                         </div>
                     </template>
                 </div>
                 
-                <h3 class="text-sm font-semibold text-gray-400 mb-3 mt-4"><i class="fas fa-industry text-blue-500 mr-2"></i>MÉTAUX INDUSTRIELS</h3>
+                <h3 class="text-sm font-semibold text-gray-400 mb-3 mt-4">
+                    <i class="fas fa-industry text-blue-500 mr-2"></i>MÉTAUX INDUSTRIELS
+                </h3>
                 <div class="space-y-2">
-                    <template x-for="metal in metals.industrial" :key="metal.name">
+                    <template x-for="metal in ['XCU', 'XPB', 'XZN']" :key="metal">
                         <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg transition">
-                            <span class="text-gray-300" x-text="metal.name"></span>
+                            <span class="text-gray-300" x-text="metal === 'XCU' ? 'Cuivre' : (metal === 'XPB' ? 'Plomb' : 'Zinc')"></span>
                             <div class="text-right">
-                                <span class="font-mono" x-text="metal.price"></span>
-                                <span :class="metal.change >= 0 ? 'trend-up' : 'trend-down'" class="text-sm ml-2" x-text="(metal.change >= 0 ? '+' : '') + metal.change + '%'"></span>
+                                <span class="font-mono" x-text="metals.industriels?.[metal]?.prix?.toFixed(2) || '---'"></span>
+                                <span class="text-sm ml-2" :class="(metals.industriels?.[metal]?.variation_pct || 0) >= 0 ? 'trend-up' : 'trend-down'"
+                                      x-text="(metals.industriels?.[metal]?.variation_pct ? (metals.industriels[metal].variation_pct > 0 ? '+' : '') + metals.industriels[metal].variation_pct.toFixed(1) + '%' : '---')"></span>
                             </div>
                         </div>
                     </template>
                 </div>
             </div>
-            
-            <!-- Jauges risque -->
+
+            <!-- ALERTES EN DIRECT -->
             <div class="glass-card rounded-xl p-4 border border-gray-800">
-                <div class="mb-4">
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="text-gray-400"><i class="fas fa-globe mr-2"></i>Risque géopolitique</span>
-                        <span class="font-bold" x-text="risk.geo + '%'"></span>
-                    </div>
-                    <div class="w-full bg-gray-800 rounded-full h-2">
-                        <div class="bg-yellow-500 h-2 rounded-full" :style="'width: ' + risk.geo + '%'"></div>
-                    </div>
-                </div>
-                
-                <div>
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="text-gray-400"><i class="fas fa-percent mr-2"></i>Probabilité hausse taux FED</span>
-                        <span class="font-bold" x-text="risk.fed + '%'"></span>
-                    </div>
-                    <div class="w-full bg-gray-800 rounded-full h-2">
-                        <div class="bg-blue-500 h-2 rounded-full" :style="'width: ' + risk.fed + '%'"></div>
-                    </div>
+                <h3 class="text-sm font-semibold text-gray-400 mb-3">
+                    <i class="fas fa-bell text-yellow-500 mr-2"></i>ALERTES EN DIRECT
+                </h3>
+                <div class="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                    <template x-for="(alert, index) in alerts.slice(0,5)" :key="index">
+                        <div class="p-2 bg-gray-800/50 rounded-lg text-sm border-l-4" 
+                             :class="alert.type === 'breakout' ? 'border-green-500' : (alert.type === 'vente' ? 'border-red-500' : 'border-blue-500')">
+                            <span x-text="alert.message"></span>
+                            <span class="text-xs text-gray-500 block mt-1" x-text="alert.time"></span>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>
 
-        <!-- COLONNE CENTRALE : TABLEAU ACTIONS -->
+        <!-- === COLONNE CENTRALE : TABLEAU DES ACTIONS === -->
         <div class="lg:col-span-6">
             <div class="glass-card rounded-xl p-4 border border-gray-800">
-                <!-- Filtres et recherche -->
+                <!-- Filtres -->
                 <div class="flex flex-wrap gap-2 mb-4">
                     <input type="text" placeholder="Rechercher une action..." 
                            class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 flex-grow focus:outline-none focus:border-green-500"
                            x-model="searchQuery">
-                    
-                    <select x-model="sectorFilter" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2">
-                        <option value="">Tous secteurs</option>
-                        <option value="Mines">Mines</option>
-                        <option value="Banques">Banques</option>
-                        <option value="Santé">Santé</option>
-                        <option value="Agro">Agro</option>
-                        <option value="Industrie">Industrie</option>
-                        <option value="Immobilier">Immobilier</option>
-                    </select>
                 </div>
 
                 <!-- Tableau -->
@@ -161,34 +161,29 @@
                     <table class="w-full">
                         <thead class="text-gray-400 text-sm border-b border-gray-800">
                             <tr>
-                                <th class="text-left py-3 cursor-pointer hover:text-green-500" @click="sort('symbol')">Symbole</th>
-                                <th class="text-left cursor-pointer hover:text-green-500" @click="sort('name')">Nom</th>
-                                <th class="text-left hidden md:table-cell">Secteur</th>
-                                <th class="text-right cursor-pointer hover:text-green-500" @click="sort('price')">Prix</th>
-                                <th class="text-right cursor-pointer hover:text-green-500" @click="sort('change')">Var%</th>
-                                <th class="text-right hidden lg:table-cell cursor-pointer hover:text-green-500" @click="sort('volume')">Volume</th>
-                                <th class="text-right hidden xl:table-cell">RSI</th>
-                                <th class="text-right hidden xl:table-cell">Support</th>
-                                <th class="text-right hidden xl:table-cell">Résistance</th>
+                                <th class="text-left py-3 cursor-pointer hover:text-green-500" @click="sort('sym')">Symbole</th>
+                                <th class="text-left cursor-pointer hover:text-green-500" @click="sort('nom')">Nom</th>
+                                <th class="text-right cursor-pointer hover:text-green-500" @click="sort('prix')">Prix</th>
+                                <th class="text-right cursor-pointer hover:text-green-500" @click="sort('rsi')">RSI</th>
+                                <th class="text-right hidden md:table-cell">Support</th>
+                                <th class="text-right hidden md:table-cell">Résistance</th>
                                 <th class="text-center">Signal</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <template x-for="stock in filteredStocks" :key="stock.symbol">
+                            <template x-for="stock in filteredStocks" :key="stock.sym">
                                 <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition cursor-pointer" 
-                                    @click="showStockDetail(stock)">
-                                    <td class="py-3 font-mono font-bold" x-text="stock.symbol"></td>
-                                    <td class="text-gray-300" x-text="stock.name"></td>
-                                    <td class="text-gray-500 text-sm hidden md:table-cell" x-text="stock.sector"></td>
-                                    <td class="text-right font-mono" x-text="stock.price.toFixed(2)"></td>
-                                    <td class="text-right font-mono" :class="stock.change >= 0 ? 'trend-up' : 'trend-down'" 
-                                        x-text="(stock.change >= 0 ? '+' : '') + stock.change.toFixed(1) + '%'"></td>
-                                    <td class="text-right hidden lg:table-cell font-mono" x-text="formatVolume(stock.volume)"></td>
-                                    <td class="text-right hidden xl:table-cell" :class="stock.rsi > 70 ? 'trend-up' : (stock.rsi < 30 ? 'trend-down' : '')" 
+                                    @click="selectStock(stock)">
+                                    <td class="py-3 font-mono font-bold" x-text="stock.sym"></td>
+                                    <td class="text-gray-300 text-sm" x-text="stock.nom"></td>
+                                    <td class="text-right font-mono" x-text="stock.prix?.toFixed(2)"></td>
+                                    <td class="text-right font-mono" :class="stock.rsi > 70 ? 'trend-up' : (stock.rsi < 30 ? 'trend-down' : '')" 
                                         x-text="stock.rsi"></td>
-                                    <td class="text-right hidden xl:table-cell font-mono" x-text="stock.support.toFixed(1)"></td>
-                                    <td class="text-right hidden xl:table-cell font-mono" x-text="stock.resistance.toFixed(1)"></td>
-                                    <td class="text-center" x-html="getSignalIcon(stock)"></td>
+                                    <td class="text-right hidden md:table-cell font-mono" x-text="stock.support?.toFixed(1)"></td>
+                                    <td class="text-right hidden md:table-cell font-mono" x-text="stock.resistance?.toFixed(1)"></td>
+                                    <td class="text-center">
+                                        <span x-html="getSignalBadge(stock)"></span>
+                                    </td>
                                 </tr>
                             </template>
                         </tbody>
@@ -197,199 +192,215 @@
             </div>
         </div>
 
-        <!-- COLONNE DROITE : ALERTES & NEWS -->
+        <!-- === COLONNE DROITE : DÉTAILS DE L'ACTION SÉLECTIONNÉE === -->
         <div class="lg:col-span-3 space-y-4">
-            <!-- Alertes en direct -->
-            <div class="glass-card rounded-xl p-4 border border-gray-800">
-                <h3 class="text-sm font-semibold text-gray-400 mb-3"><i class="fas fa-bell text-yellow-500 mr-2"></i>ALERTES EN DIRECT</h3>
-                <div class="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
-                    <template x-for="(alert, index) in alerts" :key="index">
-                        <div class="p-2 bg-gray-800/50 rounded-lg text-sm border-l-4" :class="alert.type === 'breakout' ? 'border-green-500' : (alert.type === 'support' ? 'border-red-500' : 'border-blue-500')">
-                            <span x-text="alert.message"></span>
-                            <span class="text-xs text-gray-500 block mt-1" x-text="alert.time"></span>
+            <div class="glass-card rounded-xl p-4 border border-gray-800 sticky top-4">
+                <h3 class="text-sm font-semibold text-gray-400 mb-3">
+                    <i class="fas fa-chart-pie text-green-500 mr-2"></i>DÉTAILS
+                </h3>
+                
+                <template x-if="selectedStock">
+                    <div class="space-y-4 detail-panel-enter">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xl font-bold" x-text="selectedStock.sym"></span>
+                            <span class="text-2xl font-mono text-green-500" x-text="selectedStock.prix?.toFixed(2) + ' DH'"></span>
                         </div>
-                    </template>
-                </div>
-            </div>
-
-            <!-- News avec sentiment -->
-            <div class="glass-card rounded-xl p-4 border border-gray-800">
-                <h3 class="text-sm font-semibold text-gray-400 mb-3"><i class="fas fa-newspaper text-blue-500 mr-2"></i>ACTUALITÉS</h3>
-                <div class="space-y-3">
-                    <template x-for="(news, index) in news" :key="index">
-                        <div class="p-2 hover:bg-gray-800 rounded-lg transition">
-                            <div class="flex items-start space-x-2">
-                                <span :class="news.sentiment === 'positif' ? 'text-green-500' : (news.sentiment === 'negatif' ? 'text-red-500' : 'text-yellow-500')">
-                                    <i :class="news.sentiment === 'positif' ? 'fas fa-smile' : (news.sentiment === 'negatif' ? 'fas fa-frown' : 'fas fa-meh')"></i>
-                                </span>
-                                <div>
-                                    <p class="text-sm" x-text="news.title"></p>
-                                    <p class="text-xs text-gray-500 mt-1" x-text="news.source"></p>
-                                </div>
+                        
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-gray-800/50 p-2 rounded">
+                                <div class="text-xs text-gray-500">RSI</div>
+                                <div class="text-lg font-bold" :class="selectedStock.rsi > 70 ? 'trend-up' : (selectedStock.rsi < 30 ? 'trend-down' : '')" 
+                                     x-text="selectedStock.rsi"></div>
+                            </div>
+                            <div class="bg-gray-800/50 p-2 rounded">
+                                <div class="text-xs text-gray-500">Signal</div>
+                                <div x-html="getSignalBadge(selectedStock, true)"></div>
+                            </div>
+                            <div class="bg-gray-800/50 p-2 rounded">
+                                <div class="text-xs text-gray-500">Support</div>
+                                <div class="font-mono" x-text="selectedStock.support?.toFixed(1)"></div>
+                            </div>
+                            <div class="bg-gray-800/50 p-2 rounded">
+                                <div class="text-xs text-gray-500">Résistance</div>
+                                <div class="font-mono" x-text="selectedStock.resistance?.toFixed(1)"></div>
                             </div>
                         </div>
-                    </template>
-                </div>
-            </div>
-
-            <!-- Boutons d'action -->
-            <div class="grid grid-cols-2 gap-2">
-                <button @click="exportPDF()" class="bg-gray-800 hover:bg-gray-700 p-3 rounded-xl transition flex items-center justify-center space-x-2">
-                    <i class="fas fa-file-pdf text-red-500"></i>
-                    <span>PDF</span>
-                </button>
-                <button @click="refreshData()" class="bg-green-600 hover:bg-green-700 p-3 rounded-xl transition flex items-center justify-center space-x-2">
-                    <i class="fas fa-sync-alt"></i>
-                    <span>Rafraîchir</span>
-                </button>
+                        
+                        <!-- Graphique simplifié -->
+                        <div class="h-32 mt-2">
+                            <canvas x-ref="chartCanvas" style="width:100%; height:100%;"></canvas>
+                        </div>
+                        
+                        <!-- Métaux corrélés -->
+                        <template x-if="['MNG', 'SMI', 'CMT'].includes(selectedStock.sym)">
+                            <div class="bg-gray-800/30 p-3 rounded-lg">
+                                <div class="text-xs text-yellow-500 mb-2">🔗 Corrélation métaux</div>
+                                <div class="text-sm" x-html="getMetauxCorrelation()"></div>
+                            </div>
+                        </template>
+                        
+                        <!-- Breakout / Divergence info -->
+                        <template x-if="selectedStock.breakout || selectedStock.divergence">
+                            <div class="bg-gray-800/30 p-3 rounded-lg">
+                                <div class="text-xs text-blue-500 mb-2">📊 Détection</div>
+                                <div class="text-sm" x-text="selectedStock.breakout ? '🚀 Breakout détecté' : (selectedStock.divergence?.message || '')"></div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+                
+                <template x-if="!selectedStock">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-hand-pointer text-3xl mb-2"></i>
+                        <p>Clique sur une action pour voir les détails</p>
+                    </div>
+                </template>
             </div>
         </div>
+    </div>
+
+    <!-- Boutons flottants -->
+    <div class="fixed bottom-6 right-6 space-y-2">
+        <button @click="exportPDF" class="bg-green-600 hover:bg-green-700 p-4 rounded-full shadow-lg transition flex items-center justify-center w-12 h-12">
+            <i class="fas fa-file-pdf"></i>
+        </button>
     </div>
 </div>
 
 <script>
-function taoussiDashboard() {
+function taoussiCockpit() {
     return {
-        // État global
+        // === ÉTAT ===
         loading: false,
         moroccoTime: '',
-        masi: { value: 13245.67, change: 2.34 },
-        totalVolume: 1250000,
-        
-        // Données métaux
-        metals: {
-            precious: [
-                { name: 'Or', price: '2350.50 $/oz', change: 0.8 },
-                { name: 'Argent', price: '28.75 $/oz', change: 1.2 }
-            ],
-            industrial: [
-                { name: 'Cuivre', price: '4.25 $/lb', change: 0.3 },
-                { name: 'Plomb', price: '2150.00 $/t', change: -0.2 },
-                { name: 'Zinc', price: '2580.00 $/t', change: 0.5 }
-            ]
-        },
-        
-        // Risques
-        risk: { geo: 45, fed: 35 },
-        
-        // Actions BVC (avec prix réels)
-        stocks: [
-            { symbol: 'MNG', name: 'MANAGEM', sector: 'Mines', price: 2450.00, change: 2.3, volume: 125000, rsi: 62, support: 2400, resistance: 2500 },
-            { symbol: 'SMI', name: 'SMI', sector: 'Mines', price: 6100.00, change: 1.2, volume: 50000, rsi: 55, support: 6000, resistance: 6200 },
-            { symbol: 'CMT', name: 'CMT', sector: 'Mines', price: 890.00, change: -0.5, volume: 30000, rsi: 45, support: 880, resistance: 900 },
-            { symbol: 'BCP', name: 'BCP', sector: 'Banques', price: 345.20, change: 0.8, volume: 200000, rsi: 58, support: 340, resistance: 350 },
-            { symbol: 'BOA', name: 'BOA', sector: 'Banques', price: 210.50, change: -1.1, volume: 150000, rsi: 42, support: 205, resistance: 215 },
-            { symbol: 'AKD', name: 'AKDITAL', sector: 'Santé', price: 520.00, change: 1.5, volume: 75000, rsi: 65, support: 510, resistance: 530 },
-            { symbol: 'CSR', name: 'COSUMAR', sector: 'Agro', price: 185.30, change: 0.3, volume: 90000, rsi: 52, support: 182, resistance: 188 },
-            { symbol: 'MSI', name: 'MUTANDIS', sector: 'Industrie', price: 430.00, change: -0.7, volume: 40000, rsi: 48, support: 425, resistance: 435 },
-            { symbol: 'ADH', name: 'ADDOHA', sector: 'Immobilier', price: 12.54, change: -2.0, volume: 500000, rsi: 35, support: 12.2, resistance: 12.8 },
-            { symbol: 'RIS', name: 'RISMA', sector: 'Immobilier', price: 305.00, change: 0.5, volume: 60000, rsi: 51, support: 300, resistance: 310 }
-        ],
-        
-        // Alertes
-        alerts: [
-            { type: 'breakout', message: '🚀 BREAKOUT - MANAGEM franchit résistance 2500', time: '14:32' },
-            { type: 'support', message: '📉 SUPPORT - ADDOHA touche support 12.20', time: '14:15' },
-            { type: 'pullback', message: '🔄 PULLBACK - SMI teste ancien support', time: '13:50' },
-            { type: 'divergence', message: '📈 DIVERGENCE - BCP signale haussier', time: '13:22' },
-            { type: 'ia', message: '🤖 IA - Signal ACHAT sur RISMA', time: '12:45' }
-        ],
-        
-        // News
-        news: [
-            { title: 'Résultats MANAGEM en hausse de 15%', source: 'Le Matin', sentiment: 'positif' },
-            { title: 'Tensions sur les taux directeurs', source: 'Le 360', sentiment: 'negatif' },
-            { title: 'MASI stable cette semaine', source: 'L\'Eco', sentiment: 'neutre' },
-            { title: 'Akdital annonce nouvelle clinique', source: 'Le Desk', sentiment: 'positif' },
-            { title: 'Cosumar exportations record', source: 'FNH', sentiment: 'positif' }
-        ],
-        
-        // Filtres
+        allData: null,
+        stocks: [],
+        metals: { precieux: {}, industriels: {} },
+        alerts: [],
+        selectedStock: null,
         searchQuery: '',
-        sectorFilter: '',
-        sortKey: 'symbol',
+        sortKey: 'sym',
         sortOrder: 'asc',
-        
-        // Horloge
+        chartInstance: null,
+
+        // === INIT ===
         init() {
-            this.updateMoroccoTime();
-            setInterval(() => this.updateMoroccoTime(), 1000);
-            this.initSparkline();
+            this.updateTime();
+            setInterval(() => this.updateTime(), 1000);
+            this.loadData();
         },
-        
-        updateMoroccoTime() {
+
+        updateTime() {
             const now = new Date();
             const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
             const moroccoTime = new Date(utc + (3600000 * 1));
             this.moroccoTime = moroccoTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         },
-        
-        initSparkline() {
-            setTimeout(() => {
-                const ctx = document.getElementById('masiSparkline').getContext('2d');
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: Array.from({length: 20}, (_, i) => i),
-                        datasets: [{
-                            data: [13200, 13250, 13230, 13280, 13300, 13290, 13320, 13350, 13340, 13360, 13380, 13370, 13390, 13400, 13420, 13410, 13430, 13440, 13435, 13445],
-                            borderColor: '#10b981',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            tension: 0.4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { x: { display: false }, y: { display: false } }
+
+        // === CHARGEMENT DES DONNÉES ===
+        async loadData() {
+            this.loading = true;
+            try {
+                const response = await fetch('https://benlouka062-pixel.github.io/bourse-casa-bot./data.json?t=' + Date.now());
+                this.allData = await response.json();
+                
+                if (this.allData.actions) {
+                    this.stocks = this.allData.actions.map(a => ({
+                        ...a,
+                        prix: a.prix || 0,
+                        rsi: a.rsi || 50,
+                        support: a.support || a.prix * 0.97,
+                        resistance: a.resistance || a.prix * 1.03
+                    }));
+                }
+                
+                if (this.allData.metaux) {
+                    this.metals = this.allData.metaux;
+                }
+                
+                // Générer des alertes à partir des données
+                this.generateAlerts();
+                
+                // Mettre à jour le graphique si une action est sélectionnée
+                if (this.selectedStock) {
+                    const updated = this.stocks.find(s => s.sym === this.selectedStock.sym);
+                    if (updated) {
+                        this.selectedStock = updated;
+                        this.$nextTick(() => this.updateChart());
                     }
-                });
-            }, 100);
+                }
+                
+            } catch (error) {
+                console.error('Erreur chargement:', error);
+                // Données de secours
+                this.stocks = [
+                    { sym: 'IAM', nom: 'ITISSALAT', prix: 142.80, rsi: 52, support: 140, resistance: 146 },
+                    { sym: 'ATW', nom: 'ATTIJARI', prix: 452.00, rsi: 68, support: 440, resistance: 465 },
+                    { sym: 'BCP', nom: 'BCP', prix: 281.00, rsi: 45, support: 275, resistance: 290 },
+                ];
+            } finally {
+                this.loading = false;
+            }
         },
-        
-        // Formatage
-        formatNumber(num) {
-            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+        // === GÉNÉRATION D'ALERTES (à partir des données) ===
+        generateAlerts() {
+            this.alerts = [];
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            
+            this.stocks.forEach(s => {
+                if (s.breakout) {
+                    this.alerts.push({
+                        type: 'breakout',
+                        message: `🚀 BREAKOUT - ${s.sym} franchit résistance`,
+                        time: timeStr
+                    });
+                }
+                if (s.divergence) {
+                    this.alerts.push({
+                        type: 'divergence',
+                        message: `📊 DIVERGENCE - ${s.sym}`,
+                        time: timeStr
+                    });
+                }
+                if (s.dist_support && Math.abs(s.dist_support) < 2) {
+                    this.alerts.push({
+                        type: 'support',
+                        message: `📉 ${s.sym} proche support`,
+                        time: timeStr
+                    });
+                }
+                if (s.signal === 'ACHAT') {
+                    this.alerts.push({
+                        type: 'achat',
+                        message: `🟢 Signal ACHAT sur ${s.sym}`,
+                        time: timeStr
+                    });
+                }
+            });
+            
+            // Limiter à 10 alertes max
+            this.alerts = this.alerts.slice(0, 10);
         },
-        
-        formatVolume(vol) {
-            if (vol >= 1000000) return (vol/1000000).toFixed(1) + 'M';
-            if (vol >= 1000) return (vol/1000).toFixed(0) + 'K';
-            return vol.toString();
-        },
-        
-        getSignalIcon(stock) {
-            if (stock.change >= 2) return '📈';
-            if (stock.change <= -2) return '📉';
-            if (stock.rsi >= 70) return '⚠️';
-            if (stock.rsi <= 30) return '💡';
-            return '➡️';
-        },
-        
-        // Filtres et tris
+
+        // === FILTRES ET TRI ===
         get filteredStocks() {
-            let result = this.stocks.filter(s => 
-                (s.symbol.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-                 s.name.toLowerCase().includes(this.searchQuery.toLowerCase())) &&
-                (this.sectorFilter === '' || s.sector === this.sectorFilter)
+            let filtered = this.stocks.filter(s => 
+                s.sym?.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                s.nom?.toLowerCase().includes(this.searchQuery.toLowerCase())
             );
             
-            return result.sort((a, b) => {
+            return filtered.sort((a, b) => {
                 let aVal = a[this.sortKey];
                 let bVal = b[this.sortKey];
                 if (typeof aVal === 'string') aVal = aVal.toLowerCase();
                 if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-                
-                if (this.sortOrder === 'asc') {
-                    return aVal > bVal ? 1 : -1;
-                } else {
-                    return aVal < bVal ? 1 : -1;
-                }
+                if (this.sortOrder === 'asc') return aVal > bVal ? 1 : -1;
+                else return aVal < bVal ? 1 : -1;
             });
         },
-        
+
         sort(key) {
             if (this.sortKey === key) {
                 this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
@@ -398,57 +409,92 @@ function taoussiDashboard() {
                 this.sortOrder = 'asc';
             }
         },
-        
-        // Interactions
-        showStockDetail(stock) {
-            alert(`Graphique détaillé de ${stock.name}\n(Prix: ${stock.price} DH)`);
+
+        // === SÉLECTION D'ACTION ===
+        selectStock(stock) {
+            this.selectedStock = stock;
+            this.$nextTick(() => this.updateChart());
         },
-        
-        refreshData() {
-            this.loading = true;
-            setTimeout(() => {
-                // Simule un rafraîchissement API
-                this.stocks = this.stocks.map(s => ({
-                    ...s,
-                    price: s.price * (1 + (Math.random() - 0.5) * 0.02),
-                    volume: Math.round(s.volume * (1 + (Math.random() - 0.5) * 0.1))
-                }));
-                this.loading = false;
-            }, 1000);
+
+        // === GRAPHIQUE ===
+        updateChart() {
+            if (!this.selectedStock || !this.$refs.chartCanvas) return;
+            
+            if (this.chartInstance) this.chartInstance.destroy();
+            
+            const ctx = this.$refs.chartCanvas.getContext('2d');
+            const prix = this.selectedStock.prix;
+            
+            // Générer des données simulées autour du prix
+            const data = [];
+            for (let i = 0; i < 10; i++) {
+                data.push(prix * (0.95 + 0.01 * i + (Math.random() * 0.02 - 0.01)));
+            }
+            
+            this.chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['J-9','J-8','J-7','J-6','J-5','J-4','J-3','J-2','J-1','Auj'],
+                    datasets: [{
+                        data: data,
+                        borderColor: '#10b981',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { display: false } }
+                }
+            });
         },
-        
-        startRealTimeUpdates() {
-            setInterval(() => {
-                // WebSocket simulé - ici tu connecteras ton backend
-                this.refreshData();
-            }, 30000); // Rafraîchit toutes les 30 secondes
+
+        // === BADGES ===
+        getSignalBadge(stock, large = false) {
+            if (stock.signal === 'BREAKOUT' || stock.breakout) {
+                return '<span class="badge-breakout px-2 py-1 rounded text-xs">🚀 BREAKOUT</span>';
+            } else if (stock.signal === 'ACHAT') {
+                return '<span class="badge-achat px-2 py-1 rounded text-xs">🟢 ACHAT</span>';
+            } else if (stock.signal === 'VENTE') {
+                return '<span class="badge-vente px-2 py-1 rounded text-xs">🔴 VENTE</span>';
+            } else if (stock.signal === 'DIVERGENCE' || stock.divergence) {
+                return '<span class="badge-divergence px-2 py-1 rounded text-xs">📊 DIV</span>';
+            } else {
+                return '<span class="badge-info px-2 py-1 rounded text-xs">⚪ ATTENTE</span>';
+            }
         },
-        
+
+        getMetauxCorrelation() {
+            let html = '';
+            if (this.selectedStock.sym === 'MNG') {
+                if (this.metals.precieux?.XAU) html += `Or: ${this.metals.precieux.XAU.prix} USD<br>`;
+                if (this.metals.precieux?.XAG) html += `Argent: ${this.metals.precieux.XAG.prix} USD`;
+            } else if (this.selectedStock.sym === 'SMI') {
+                if (this.metals.precieux?.XAG) html += `Argent: ${this.metals.precieux.XAG.prix} USD`;
+            } else if (this.selectedStock.sym === 'CMT') {
+                if (this.metals.industriels?.XCU) html += `Cuivre: ${this.metals.industriels.XCU.prix} USD<br>`;
+                if (this.metals.precieux?.XAG) html += `Argent: ${this.metals.precieux.XAG.prix} USD`;
+            }
+            return html || 'Aucune corrélation directe';
+        },
+
+        // === EXPORT PDF ===
         exportPDF() {
-            alert('Export PDF - À connecter avec ton backend Python');
+            const element = document.body;
+            html2pdf().from(element).set({
+                margin: [0.5, 0.5, 0.5, 0.5],
+                filename: `taoussi-cockpit-${new Date().toISOString().slice(0,10)}.pdf`,
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'landscape' }
+            }).save();
         }
     }
 }
 </script>
-
-<!-- API Endpoints (à décommenter pour la connexion réelle) -->
-<!--
-<script>
-async function fetchRealData() {
-    // Connexion à ton backend Python
-    const response = await fetch('http://localhost:8000/api/prices');
-    const data = await response.json();
-    return data;
-}
-
-// WebSocket pour temps réel
-const ws = new WebSocket('ws://localhost:8000/ws');
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    // Mettre à jour le dashboard
-};
-</script>
--->
 
 </body>
 </html>
