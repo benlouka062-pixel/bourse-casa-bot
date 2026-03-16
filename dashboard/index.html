@@ -2,67 +2,293 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TAOUSSI TRADER</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>TAOUSSI TRADER · COCKPIT FINAL</title>
+    
+    <!-- Tailwind pour le style -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js pour l'interactivité -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <!-- Font Awesome pour les icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
         body { background: #0a0a0a; }
-        .glass { background: rgba(26,26,26,0.95); backdrop-filter: blur(10px); border: 1px solid #333; }
+        
+        .glass-card { 
+            background: rgba(26, 26, 26, 0.95); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 1rem;
+        }
+        
         .trend-up { color: #10b981; }
         .trend-down { color: #ef4444; }
+        
+        .badge-reel {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid #10b981;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+        }
+        
+        .badge-fallback {
+            background: rgba(255, 255, 255, 0.1);
+            color: #aaa;
+            border: 1px solid #333;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1a1a1a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #10b981; }
     </style>
 </head>
-<body class="p-4 text-gray-200">
+<body class="text-gray-200 p-4 min-h-screen custom-scrollbar">
 
-<div class="max-w-6xl mx-auto">
+<div x-data="taoussiFinal()" x-init="init()" class="max-w-7xl mx-auto">
     
     <!-- HEADER -->
-    <div class="glass rounded-xl p-4 mb-4 flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-green-500">TAOUSSI TRADER</h1>
-        <div x-data="{ time: '' }" x-init="setInterval(() => time = new Date().toLocaleTimeString('fr-FR'), 1000)" x-text="time" class="font-mono"></div>
+    <div class="glass-card p-4 mb-4 flex flex-wrap items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                <i class="fas fa-chart-line text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
+                    TAOUSSI TRADER
+                </h1>
+                <p class="text-xs text-gray-500" x-text="`${actions.length} actions · ${metauxSource}`"></p>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-4">
+            <div class="text-right">
+                <div class="text-sm text-gray-500">Maroc</div>
+                <div class="text-2xl font-mono font-bold" x-text="moroccoTime"></div>
+            </div>
+            <button @click="refreshData" class="bg-gray-800 hover:bg-gray-700 p-3 rounded-xl transition-all hover:rotate-180 duration-500">
+                <i class="fas fa-sync-alt" :class="{ 'animate-spin': loading }"></i>
+            </button>
+        </div>
     </div>
 
-    <!-- GRILLE ACTIONS -->
-    <div class="glass rounded-xl p-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" id="actions-grid">
-            <div class="text-center py-4">Chargement...</div>
+    <!-- STATS MASI -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="glass-card p-4">
+            <p class="text-gray-500 text-sm">MASI</p>
+            <p class="text-2xl font-bold" x-text="masi || '---'"></p>
         </div>
+        <div class="glass-card p-4">
+            <p class="text-gray-500 text-sm">Volume</p>
+            <p class="text-2xl font-bold" x-text="volume || '---'"></p>
+        </div>
+        <div class="glass-card p-4">
+            <p class="text-gray-500 text-sm">Variation</p>
+            <p class="text-2xl font-bold" x-text="variation || '---'"></p>
+        </div>
+    </div>
+
+    <!-- GRILLE DES ACTIONS -->
+    <div class="glass-card p-4 mb-4">
+        <h2 class="text-lg font-semibold mb-4 flex items-center">
+            <i class="fas fa-chart-simple text-green-500 mr-2"></i>
+            ACTIONS
+            <span class="text-xs text-gray-500 ml-2">(cliquez pour voir les détails)</span>
+        </h2>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <template x-for="action in actions" :key="action.sym">
+                <div @click="selectAction(action)" 
+                     class="bg-gray-800/50 hover:bg-gray-800 p-4 rounded-xl border border-gray-700 cursor-pointer transition-all hover:scale-105">
+                    
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="font-bold text-green-500 text-lg" x-text="action.sym"></span>
+                            <span class="text-xs text-gray-500 ml-2" x-text="action.nom?.substring(0,8)"></span>
+                        </div>
+                        <span :class="action.source === 'RÉEL' ? 'badge-reel' : 'badge-fallback'" 
+                              x-text="action.source === 'RÉEL' ? 'RÉEL' : 'TEMP'"></span>
+                    </div>
+                    
+                    <div class="text-2xl font-mono mt-2" x-text="action.prix?.toFixed(2) + ' DH'"></div>
+                    
+                    <div class="flex justify-between mt-3 text-sm">
+                        <span>RSI: <span :class="action.rsi > 70 ? 'trend-up' : action.rsi < 30 ? 'trend-down' : ''" 
+                                      x-text="action.rsi"></span></span>
+                        <span :class="action.signal === 'ACHAT' ? 'text-green-500 font-bold' : 
+                                     action.signal === 'VENTE' ? 'text-red-500 font-bold' : ''"
+                              x-text="action.signal"></span>
+                    </div>
+                    
+                    <div class="flex justify-between mt-1 text-xs text-gray-500">
+                        <span>S: <span x-text="action.support?.toFixed(1)"></span></span>
+                        <span>R: <span x-text="action.resistance?.toFixed(1)"></span></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- PANEL DÉTAILS (apparaît quand une action est sélectionnée) -->
+    <div x-show="selectedAction" class="glass-card p-4 mb-4" x-transition>
+        <div class="flex justify-between items-start mb-4">
+            <h2 class="text-xl font-bold" x-text="selectedAction?.sym + ' · ' + selectedAction?.nom"></h2>
+            <button @click="selectedAction = null" class="text-gray-500 hover:text-gray-300">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div class="bg-gray-800/50 p-3 rounded-lg">
+                <p class="text-xs text-gray-500">Prix</p>
+                <p class="text-xl font-mono" x-text="selectedAction?.prix?.toFixed(2) + ' DH'"></p>
+            </div>
+            <div class="bg-gray-800/50 p-3 rounded-lg">
+                <p class="text-xs text-gray-500">RSI</p>
+                <p class="text-xl font-mono" :class="selectedAction?.rsi > 70 ? 'trend-up' : selectedAction?.rsi < 30 ? 'trend-down' : ''"
+                   x-text="selectedAction?.rsi"></p>
+            </div>
+            <div class="bg-gray-800/50 p-3 rounded-lg">
+                <p class="text-xs text-gray-500">Support</p>
+                <p class="text-xl font-mono" x-text="selectedAction?.support?.toFixed(1)"></p>
+            </div>
+            <div class="bg-gray-800/50 p-3 rounded-lg">
+                <p class="text-xs text-gray-500">Résistance</p>
+                <p class="text-xl font-mono" x-text="selectedAction?.resistance?.toFixed(1)"></p>
+            </div>
+        </div>
+        
+        <div class="bg-gray-800/30 p-3 rounded-lg">
+            <p class="text-sm text-gray-400 mb-2">Source</p>
+            <p class="text-sm" :class="selectedAction?.source === 'RÉEL' ? 'text-green-500' : 'text-yellow-500'"
+               x-text="selectedAction?.source === 'RÉEL' ? '✓ Données temps réel' : '⚠️ Données temporaires (seront remplacées à l\'ouverture)'"></p>
+        </div>
+    </div>
+
+    <!-- MÉTAUX -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Métaux précieux -->
+        <div class="glass-card p-4">
+            <h3 class="text-sm font-semibold text-gray-400 mb-3">
+                <i class="fas fa-coins text-yellow-500 mr-2"></i>MÉTAUX PRÉCIEUX
+            </h3>
+            <div class="space-y-2">
+                <template x-for="(metal, key) in metals.precieux" :key="key">
+                    <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
+                        <span class="text-gray-300" x-text="metal.nom"></span>
+                        <div class="text-right">
+                            <span class="font-mono" x-text="metal.prix.toFixed(2)"></span>
+                            <span class="text-sm ml-2" :class="metal.variation >= 0 ? 'trend-up' : 'trend-down'"
+                                  x-text="(metal.variation > 0 ? '+' : '') + metal.variation.toFixed(1) + '%'"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Métaux industriels -->
+        <div class="glass-card p-4">
+            <h3 class="text-sm font-semibold text-gray-400 mb-3">
+                <i class="fas fa-industry text-blue-500 mr-2"></i>MÉTAUX INDUSTRIELS
+            </h3>
+            <div class="space-y-2">
+                <template x-for="(metal, key) in metals.industriels" :key="key">
+                    <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
+                        <span class="text-gray-300" x-text="metal.nom"></span>
+                        <div class="text-right">
+                            <span class="font-mono" x-text="metal.prix.toFixed(2)"></span>
+                            <span class="text-sm ml-2" :class="metal.variation >= 0 ? 'trend-up' : 'trend-down'"
+                                  x-text="(metal.variation > 0 ? '+' : '') + metal.variation.toFixed(1) + '%'"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="mt-6 text-center text-xs text-gray-600">
+        <p>Données réelles à partir de lundi 9h · ⚡ Mise à jour automatique toutes les heures</p>
     </div>
 </div>
 
 <script>
-async function loadData() {
-    try {
-        const res = await fetch('https://benlouka062-pixel.github.io/bourse-casa-bot./data.json?t=' + Date.now());
-        const data = await res.json();
+function taoussiFinal() {
+    return {
+        loading: false,
+        moroccoTime: '',
+        actions: [],
+        metals: { precieux: {}, industriels: {} },
+        masi: null,
+        volume: null,
+        variation: null,
+        metauxSource: 'Chargement...',
+        selectedAction: null,
         
-        const grid = document.getElementById('actions-grid');
-        if (!data.actions || data.actions.length === 0) {
-            grid.innerHTML = '<div class="text-center py-8 text-gray-500">Aucune donnée</div>';
-            return;
+        init() {
+            this.updateTime();
+            setInterval(() => this.updateTime(), 1000);
+            this.loadData();
+            setInterval(() => this.loadData(), 300000); // 5 minutes
+        },
+        
+        updateTime() {
+            const now = new Date();
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const moroccoTime = new Date(utc + (3600000 * 1));
+            this.moroccoTime = moroccoTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        },
+        
+        async loadData() {
+            this.loading = true;
+            try {
+                const res = await fetch('https://benlouka062-pixel.github.io/bourse-casa-bot./data.json?t=' + Date.now());
+                const data = await res.json();
+                
+                if (data.actions) {
+                    this.actions = data.actions;
+                }
+                
+                if (data.metaux) {
+                    this.metals = data.metaux;
+                    const hasReal = data.actions.some(a => a.source === 'RÉEL');
+                    this.metauxSource = hasReal ? '✓ Données réelles' : '⚠️ Temporaire (attente ouverture)';
+                }
+                
+                this.masi = data.masi || '---';
+                this.volume = data.volume || '---';
+                this.variation = data.variation || '---';
+                
+                if (this.selectedAction) {
+                    const updated = this.actions.find(a => a.sym === this.selectedAction.sym);
+                    if (updated) this.selectedAction = updated;
+                }
+                
+            } catch (e) {
+                console.error('Erreur chargement', e);
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        refreshData() {
+            this.loadData();
+        },
+        
+        selectAction(action) {
+            this.selectedAction = action;
         }
-        
-        grid.innerHTML = data.actions.map(a => `
-            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
-                <div class="flex justify-between">
-                    <span class="font-bold text-green-500">${a.sym}</span>
-                    <span class="text-sm text-gray-400">${a.nom || ''}</span>
-                </div>
-                <div class="text-xl font-mono mt-2">${a.prix?.toFixed(2) || '---'} DH</div>
-                <div class="flex justify-between mt-2 text-sm">
-                    <span>RSI: <span class="${a.rsi > 70 ? 'trend-up' : a.rsi < 30 ? 'trend-down' : ''}">${a.rsi || '--'}</span></span>
-                    <span class="${a.signal === 'ACHAT' ? 'text-green-500' : a.signal === 'VENTE' ? 'text-red-500' : ''}">${a.signal || 'ATTENTE'}</span>
-                </div>
-            </div>
-        `).join('');
-        
-    } catch (e) {
-        document.getElementById('actions-grid').innerHTML = '<div class="text-center py-8 text-red-500">Erreur chargement</div>';
     }
 }
-loadData();
-setInterval(loadData, 60000);
 </script>
-<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
 </body>
 </html>
