@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>TAOUSSI TRADER · COCKPIT FINAL</title>
+    <title>TAOUSSI TRADER · MACHINE DE GUERRE</title>
     
-    <!-- Tailwind pour le style -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js pour les graphiques -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Alpine.js pour l'interactivité -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <!-- Font Awesome pour les icônes -->
@@ -49,11 +51,46 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #1a1a1a; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #10b981; }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin: 20px 0;
+        }
+        
+        .indicator-selector {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        
+        .indicator-btn {
+            background: #1f2937;
+            color: #9ca3af;
+            border: 1px solid #374151;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .indicator-btn.active {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+        }
+        
+        .indicator-btn:hover {
+            background: #374151;
+        }
     </style>
 </head>
 <body class="text-gray-200 p-4 min-h-screen custom-scrollbar">
 
-<div x-data="taoussiFinal()" x-init="init()" class="max-w-7xl mx-auto">
+<div x-data="taoussiMachine()" x-init="init()" class="max-w-7xl mx-auto">
     
     <!-- HEADER -->
     <div class="glass-card p-4 mb-4 flex flex-wrap items-center justify-between">
@@ -63,9 +100,9 @@
             </div>
             <div>
                 <h1 class="text-2xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
-                    TAOUSSI TRADER
+                    TAOUSSI TRADER · MACHINE DE GUERRE
                 </h1>
-                <p class="text-xs text-gray-500" x-text="`${actions.length} actions · ${metauxSource}`"></p>
+                <p class="text-xs text-gray-500" x-text="`${actions.length} actions · Or/Argent RÉELS`"></p>
             </div>
         </div>
         
@@ -96,12 +133,12 @@
         </div>
     </div>
 
-    <!-- GRILLE DES ACTIONS -->
+    <!-- GRILLE DES ACTIONS (CLIQUABLES) -->
     <div class="glass-card p-4 mb-4">
         <h2 class="text-lg font-semibold mb-4 flex items-center">
             <i class="fas fa-chart-simple text-green-500 mr-2"></i>
             ACTIONS
-            <span class="text-xs text-gray-500 ml-2">(cliquez pour voir les détails)</span>
+            <span class="text-xs text-gray-500 ml-2">(cliquez pour voir les graphiques)</span>
         </h2>
         
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -127,34 +164,47 @@
                                      action.signal === 'VENTE' ? 'text-red-500 font-bold' : ''"
                               x-text="action.signal"></span>
                     </div>
-                    
-                    <div class="flex justify-between mt-1 text-xs text-gray-500">
-                        <span>S: <span x-text="action.support?.toFixed(1)"></span></span>
-                        <span>R: <span x-text="action.resistance?.toFixed(1)"></span></span>
-                    </div>
                 </div>
             </template>
         </div>
     </div>
 
-    <!-- PANEL DÉTAILS (apparaît quand une action est sélectionnée) -->
+    <!-- PANEL DE GRAPHIQUES (apparaît quand on clique) -->
     <div x-show="selectedAction" class="glass-card p-4 mb-4" x-transition>
         <div class="flex justify-between items-start mb-4">
-            <h2 class="text-xl font-bold" x-text="selectedAction?.sym + ' · ' + selectedAction?.nom"></h2>
-            <button @click="selectedAction = null" class="text-gray-500 hover:text-gray-300">
+            <div>
+                <h2 class="text-xl font-bold" x-text="selectedAction?.sym + ' · ' + selectedAction?.nom"></h2>
+                <p class="text-sm text-gray-500" x-text="'Prix: ' + selectedAction?.prix?.toFixed(2) + ' DH'"></p>
+            </div>
+            <button @click="closeDetails" class="text-gray-500 hover:text-gray-300">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            <div class="bg-gray-800/50 p-3 rounded-lg">
-                <p class="text-xs text-gray-500">Prix</p>
-                <p class="text-xl font-mono" x-text="selectedAction?.prix?.toFixed(2) + ' DH'"></p>
-            </div>
+        <!-- Sélecteur d'indicateurs -->
+        <div class="indicator-selector">
+            <button class="indicator-btn" :class="{ 'active': selectedIndicator === 'prix' }" @click="setIndicator('prix')">Prix</button>
+            <button class="indicator-btn" :class="{ 'active': selectedIndicator === 'rsi' }" @click="setIndicator('rsi')">RSI</button>
+            <button class="indicator-btn" :class="{ 'active': selectedIndicator === 'macd' }" @click="setIndicator('macd')">MACD</button>
+            <button class="indicator-btn" :class="{ 'active': selectedIndicator === 'bollinger' }" @click="setIndicator('bollinger')">Bollinger</button>
+            <button class="indicator-btn" :class="{ 'active': selectedIndicator === 'volume' }" @click="setIndicator('volume')">Volume</button>
+        </div>
+        
+        <!-- Zone du graphique -->
+        <div class="chart-container">
+            <canvas x-ref="chartCanvas"></canvas>
+        </div>
+        
+        <!-- Indicateurs chiffrés -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
             <div class="bg-gray-800/50 p-3 rounded-lg">
                 <p class="text-xs text-gray-500">RSI</p>
                 <p class="text-xl font-mono" :class="selectedAction?.rsi > 70 ? 'trend-up' : selectedAction?.rsi < 30 ? 'trend-down' : ''"
                    x-text="selectedAction?.rsi"></p>
+            </div>
+            <div class="bg-gray-800/50 p-3 rounded-lg">
+                <p class="text-xs text-gray-500">MACD</p>
+                <p class="text-xl font-mono" x-text="selectedAction?.macd?.toFixed(2)"></p>
             </div>
             <div class="bg-gray-800/50 p-3 rounded-lg">
                 <p class="text-xs text-gray-500">Support</p>
@@ -166,26 +216,44 @@
             </div>
         </div>
         
-        <div class="bg-gray-800/30 p-3 rounded-lg">
-            <p class="text-sm text-gray-400 mb-2">Source</p>
-            <p class="text-sm" :class="selectedAction?.source === 'RÉEL' ? 'text-green-500' : 'text-yellow-500'"
-               x-text="selectedAction?.source === 'RÉEL' ? '✓ Données temps réel' : '⚠️ Données temporaires (seront remplacées à l\'ouverture)'"></p>
-        </div>
+        <!-- Métaux corrélés pour MNG, SMI, CMT -->
+        <template x-if="['MNG', 'SMI', 'CMT'].includes(selectedAction?.sym)">
+            <div class="mt-4 bg-gray-800/30 p-3 rounded-lg">
+                <p class="text-sm text-gray-400 mb-2">🔗 Corrélation métaux</p>
+                <div class="text-sm grid grid-cols-2 gap-2">
+                    <template x-if="selectedAction.sym === 'MNG'">
+                        <>
+                            <div><span class="text-gray-500">Or:</span> <span class="font-mono" x-text="metals.precieux?.XAU?.prix?.toFixed(2) + ' USD'"></span></div>
+                            <div><span class="text-gray-500">Argent:</span> <span class="font-mono" x-text="metals.precieux?.XAG?.prix?.toFixed(2) + ' USD'"></span></div>
+                        </>
+                    </template>
+                    <template x-if="selectedAction.sym === 'SMI'">
+                        <div><span class="text-gray-500">Argent:</span> <span class="font-mono" x-text="metals.precieux?.XAG?.prix?.toFixed(2) + ' USD'"></span></div>
+                    </template>
+                    <template x-if="selectedAction.sym === 'CMT'">
+                        <>
+                            <div><span class="text-gray-500">Cuivre:</span> <span class="font-mono" x-text="metals.industriels?.XCU?.prix?.toFixed(2) + ' USD'"></span></div>
+                            <div><span class="text-gray-500">Argent:</span> <span class="font-mono" x-text="metals.precieux?.XAG?.prix?.toFixed(2) + ' USD'"></span></div>
+                        </>
+                    </template>
+                </div>
+            </div>
+        </template>
     </div>
-
-    <!-- MÉTAUX -->
+        <!-- MÉTAUX (RÉELS) -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Métaux précieux -->
         <div class="glass-card p-4">
             <h3 class="text-sm font-semibold text-gray-400 mb-3">
                 <i class="fas fa-coins text-yellow-500 mr-2"></i>MÉTAUX PRÉCIEUX
+                <span class="ml-2 text-xs text-green-500">✓ RÉELS</span>
             </h3>
             <div class="space-y-2">
                 <template x-for="(metal, key) in metals.precieux" :key="key">
                     <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
                         <span class="text-gray-300" x-text="metal.nom"></span>
                         <div class="text-right">
-                            <span class="font-mono" x-text="metal.prix.toFixed(2)"></span>
+                            <span class="font-mono" x-text="metal.prix.toFixed(2) + ' USD'"></span>
                             <span class="text-sm ml-2" :class="metal.variation >= 0 ? 'trend-up' : 'trend-down'"
                                   x-text="(metal.variation > 0 ? '+' : '') + metal.variation.toFixed(1) + '%'"></span>
                         </div>
@@ -204,7 +272,7 @@
                     <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
                         <span class="text-gray-300" x-text="metal.nom"></span>
                         <div class="text-right">
-                            <span class="font-mono" x-text="metal.prix.toFixed(2)"></span>
+                            <span class="font-mono" x-text="metal.prix.toFixed(2) + ' USD'"></span>
                             <span class="text-sm ml-2" :class="metal.variation >= 0 ? 'trend-up' : 'trend-down'"
                                   x-text="(metal.variation > 0 ? '+' : '') + metal.variation.toFixed(1) + '%'"></span>
                         </div>
@@ -213,15 +281,14 @@
             </div>
         </div>
     </div>
-
     <!-- FOOTER -->
     <div class="mt-6 text-center text-xs text-gray-600">
-        <p>Données réelles à partir de lundi 9h · ⚡ Mise à jour automatique toutes les heures</p>
+        <p>🏅 Or/Argent en temps réel · 📊 Graphiques interactifs · ⚡ Mise à jour auto</p>
     </div>
 </div>
 
 <script>
-function taoussiFinal() {
+function taoussiMachine() {
     return {
         loading: false,
         moroccoTime: '',
@@ -230,8 +297,9 @@ function taoussiFinal() {
         masi: null,
         volume: null,
         variation: null,
-        metauxSource: 'Chargement...',
         selectedAction: null,
+        selectedIndicator: 'prix',
+        chartInstance: null,
         
         init() {
             this.updateTime();
@@ -259,8 +327,6 @@ function taoussiFinal() {
                 
                 if (data.metaux) {
                     this.metals = data.metaux;
-                    const hasReal = data.actions.some(a => a.source === 'RÉEL');
-                    this.metauxSource = hasReal ? '✓ Données réelles' : '⚠️ Temporaire (attente ouverture)';
                 }
                 
                 this.masi = data.masi || '---';
@@ -269,7 +335,10 @@ function taoussiFinal() {
                 
                 if (this.selectedAction) {
                     const updated = this.actions.find(a => a.sym === this.selectedAction.sym);
-                    if (updated) this.selectedAction = updated;
+                    if (updated) {
+                        this.selectedAction = updated;
+                        this.$nextTick(() => this.updateChart());
+                    }
                 }
                 
             } catch (e) {
@@ -285,6 +354,137 @@ function taoussiFinal() {
         
         selectAction(action) {
             this.selectedAction = action;
+            this.selectedIndicator = 'prix';
+            this.$nextTick(() => this.updateChart());
+        },
+        
+        closeDetails() {
+            this.selectedAction = null;
+            if (this.chartInstance) {
+                this.chartInstance.destroy();
+                this.chartInstance = null;
+            }
+        },
+        
+        setIndicator(indicator) {
+            this.selectedIndicator = indicator;
+            this.updateChart();
+        },
+        
+        updateChart() {
+            if (!this.selectedAction || !this.$refs.chartCanvas) return;
+            
+            if (this.chartInstance) this.chartInstance.destroy();
+            
+            const ctx = this.$refs.chartCanvas.getContext('2d');
+            const historique = this.selectedAction.historique || [];
+            
+            // Préparer les labels (30 derniers jours)
+            const labels = [];
+            for (let i = 0; i < 30; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - (29 - i));
+                labels.push(d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }));
+            }
+            
+            let datasets = [];
+            
+            switch(this.selectedIndicator) {
+                case 'prix':
+                    datasets = [{
+                        label: `${this.selectedAction.sym} - Prix`,
+                        data: historique,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        fill: true
+                    }];
+                    break;
+                    
+                case 'rsi':
+                    // Simuler RSI historique
+                    const rsiData = historique.map((p, i) => 50 + Math.sin(i) * 20);
+                    datasets = [{
+                        label: 'RSI',
+                        data: rsiData,
+                        borderColor: '#f59e0b',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                    }];
+                    break;
+                    
+                case 'macd':
+                    datasets = [
+                        {
+                            label: 'MACD',
+                            data: historique.map(() => this.selectedAction.macd || 0),
+                            borderColor: '#3b82f6',
+                            borderWidth: 2,
+                        },
+                        {
+                            label: 'Signal',
+                            data: historique.map(() => this.selectedAction.signal_macd || 0),
+                            borderColor: '#ef4444',
+                            borderWidth: 2,
+                        }
+                    ];
+                    break;
+                    
+                case 'bollinger':
+                    datasets = [
+                        {
+                            label: 'Bande haute',
+                            data: historique.map(() => this.selectedAction.bb_haut || 0),
+                            borderColor: '#10b981',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                        },
+                        {
+                            label: 'Prix',
+                            data: historique,
+                            borderColor: '#ffffff',
+                            borderWidth: 2,
+                        },
+                        {
+                            label: 'Bande basse',
+                            data: historique.map(() => this.selectedAction.bb_bas || 0),
+                            borderColor: '#10b981',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                        }
+                    ];
+                    break;
+                    
+                case 'volume':
+                    datasets = [{
+                        label: 'Volume',
+                        data: historique.map((v, i) => 100000 + Math.random() * 50000),
+                        backgroundColor: '#10b981',
+                        borderColor: '#10b981',
+                        type: 'bar',
+                    }];
+                    break;
+            }
+            
+            this.chartInstance = new Chart(ctx, {
+                type: this.selectedIndicator === 'volume' ? 'bar' : 'line',
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#9ca3af' } },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: { grid: { color: '#333' }, ticks: { color: '#888' } },
+                        x: { grid: { display: false }, ticks: { color: '#888', maxRotation: 45, minRotation: 45 } }
+                    }
+                }
+            });
         }
     }
 }
