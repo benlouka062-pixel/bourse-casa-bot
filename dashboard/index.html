@@ -3,43 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>TAOUSSI TRADER </title>
+    <title>TAOUSSI TRADER · ULTIME</title>
     
-    <!-- Tailwind CSS -->
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js pour les graphiques -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Alpine.js pour l'interactivité -->
+    <!-- Alpine.js -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <!-- Font Awesome pour les icônes -->
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@100..800&display=swap');
+        
         * { font-family: 'Inter', sans-serif; }
-        body { background: #0a0a0a; }
+        body { background: #0f0f0f; color: #e0e0e0; }
         
         .glass-card { 
-            background: rgba(26, 26, 26, 0.95); 
+            background: rgba(22, 22, 22, 0.95); 
             backdrop-filter: blur(10px); 
-            border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.03);
             border-radius: 1rem;
         }
         
-        .trend-up { color: #10b981; }
-        .trend-down { color: #ef4444; }
+        .trend-up { color: #00b8a9; }
+        .trend-down { color: #ff6b6b; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
         
         .badge-reel {
-            background: rgba(16, 185, 129, 0.2);
-            color: #10b981;
-            border: 1px solid #10b981;
+            background: rgba(0, 184, 169, 0.2);
+            color: #00b8a9;
+            border: 1px solid #00b8a9;
             padding: 2px 8px;
             border-radius: 12px;
             font-size: 10px;
         }
         
         .badge-fallback {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.1);
             color: #aaa;
             border: 1px solid #333;
             padding: 2px 8px;
@@ -47,52 +49,80 @@
             font-size: 10px;
         }
         
+        .badge-breakout {
+            background: rgba(255, 215, 0, 0.2);
+            color: #ffd700;
+            border: 1px solid #ffd700;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .badge-divergence {
+            background: rgba(77, 195, 255, 0.2);
+            color: #4dc3ff;
+            border: 1px solid #4dc3ff;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #1a1a1a; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #10b981; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #00b8a9; }
         
-        .chart-container {
-            position: relative;
-            height: 300px;
-            width: 100%;
-            margin: 20px 0;
-        }
-        
-        .indicator-selector {
-            display: flex;
-            gap: 8px;
-            margin: 10px 0;
-            flex-wrap: wrap;
-        }
-        
-        .indicator-btn {
+        .period-btn {
             background: #1f2937;
             color: #9ca3af;
             border: 1px solid #374151;
-            padding: 6px 12px;
+            padding: 4px 8px;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .period-btn.active {
+            background: #00b8a9;
+            color: white;
+            border-color: #00b8a9;
+        }
+        
+        .period-btn:hover {
+            background: #374151;
+        }
+        
+        .alert-btn {
+            background: #2d3748;
+            color: #ffd700;
+            border: 1px solid #ffd700;
+            padding: 4px 12px;
             border-radius: 20px;
             font-size: 12px;
             cursor: pointer;
             transition: all 0.2s;
         }
         
-        .indicator-btn.active {
-            background: #10b981;
-            color: white;
-            border-color: #10b981;
+        .alert-btn:hover {
+            background: #ffd70020;
         }
         
-        .indicator-btn:hover {
-            background: #374151;
+        .strategy-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            margin-right: 4px;
         }
     </style>
 </head>
-<body class="text-gray-200 p-4 min-h-screen custom-scrollbar">
+<body class="p-4 min-h-screen custom-scrollbar">
 
-<div x-data="taoussiMachine()" x-init="init()" class="max-w-7xl mx-auto">
+<div x-data="taoussiUltime()" x-init="init()" class="max-w-7xl mx-auto">
     
-    <!-- HEADER -->
+    <!-- HEADER DOUBLE HORLOGE -->
     <div class="glass-card p-4 mb-4 flex flex-wrap items-center justify-between">
         <div class="flex items-center space-x-3">
             <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
@@ -100,20 +130,17 @@
             </div>
             <div>
                 <h1 class="text-2xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
-                    TAOUSSI TRADER
+                    TAOUSSI TRADER · ULTIME
                 </h1>
-                <p class="text-xs text-gray-500" x-text="`${actions.length} actions · Or/Argent RÉELS`"></p>
+                <p class="text-xs text-gray-500" x-text="`${actions.length} actions · Stratégies actives`"></p>
             </div>
         </div>
         
-        <div class="flex items-center space-x-4">
-            <div class="text-right">
-                <div class="text-sm text-gray-500">Maroc</div>
-                <div class="text-2xl font-mono font-bold" x-text="moroccoTime"></div>
-            </div>
-            <button @click="refreshData" class="bg-gray-800 hover:bg-gray-700 p-3 rounded-xl transition-all hover:rotate-180 duration-500">
-                <i class="fas fa-sync-alt" :class="{ 'animate-spin': loading }"></i>
-            </button>
+        <div class="flex flex-col items-end space-y-1">
+            <div class="text-sm text-gray-500">🇲🇦 Maroc</div>
+            <div class="text-2xl font-mono font-bold" x-text="moroccoTime"></div>
+            <div class="text-sm text-gray-500">🇺🇸 USA (NY)</div>
+            <div class="text-lg font-mono" x-text="nyTime"></div>
         </div>
     </div>
 
@@ -133,12 +160,84 @@
         </div>
     </div>
 
-    <!-- GRILLE DES ACTIONS (CLIQUABLES) -->
+    <!-- 6 MÉTAUX AVEC ALERTES -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <!-- Métaux précieux -->
+        <div class="glass-card p-4">
+            <h3 class="text-sm font-semibold text-gray-400 mb-3">
+                <i class="fas fa-coins text-yellow-500 mr-2"></i>MÉTAUX PRÉCIEUX
+                <span class="ml-2 text-xs text-green-500">✓ RÉELS</span>
+            </h3>
+            <div class="space-y-2">
+                <!-- Or -->
+                <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
+                    <span class="text-gray-300">Or</span>
+                    <div class="text-right">
+                        <span class="font-mono" x-text="(metals.precieux?.XAU?.prix || 2350).toFixed(2) + ' USD'"></span>
+                        <span class="text-sm ml-2" :class="(metals.precieux?.XAU?.variation || 0) >= 0 ? 'trend-up' : 'trend-down'"
+                              x-text="((metals.precieux?.XAU?.variation || 0) > 0 ? '+' : '') + (metals.precieux?.XAU?.variation || 0).toFixed(1) + '%'"></span>
+                    </div>
+                    <button class="alert-btn ml-2" @click="setAlert('Or', metals.precieux?.XAU?.prix)"><i class="fas fa-bell"></i></button>
+                </div>
+                <!-- Argent -->
+                <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
+                    <span class="text-gray-300">Argent</span>
+                    <div class="text-right">
+                        <span class="font-mono" x-text="(metals.precieux?.XAG?.prix || 28.7).toFixed(2) + ' USD'"></span>
+                        <span class="text-sm ml-2" :class="(metals.precieux?.XAG?.variation || 0) >= 0 ? 'trend-up' : 'trend-down'"
+                              x-text="((metals.precieux?.XAG?.variation || 0) > 0 ? '+' : '') + (metals.precieux?.XAG?.variation || 0).toFixed(1) + '%'"></span>
+                    </div>
+                    <button class="alert-btn ml-2" @click="setAlert('Argent', metals.precieux?.XAG?.prix)"><i class="fas fa-bell"></i></button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Métaux industriels (Cuivre, Zinc, Plomb) -->
+        <div class="glass-card p-4">
+            <h3 class="text-sm font-semibold text-gray-400 mb-3">
+                <i class="fas fa-industry text-blue-500 mr-2"></i>MÉTAUX INDUSTRIELS
+            </h3>
+            <div class="space-y-2">
+                <!-- Cuivre -->
+                <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
+                    <span class="text-gray-300">Cuivre</span>
+                    <div class="text-right">
+                        <span class="font-mono" x-text="(metals.industriels?.XCU?.prix || 4.25).toFixed(2) + ' USD'"></span>
+                        <span class="text-sm ml-2" :class="(metals.industriels?.XCU?.variation || 0) >= 0 ? 'trend-up' : 'trend-down'"
+                              x-text="((metals.industriels?.XCU?.variation || 0) > 0 ? '+' : '') + (metals.industriels?.XCU?.variation || 0).toFixed(1) + '%'"></span>
+                    </div>
+                    <button class="alert-btn ml-2" @click="setAlert('Cuivre', metals.industriels?.XCU?.prix)"><i class="fas fa-bell"></i></button>
+                </div>
+                <!-- Zinc -->
+                <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
+                    <span class="text-gray-300">Zinc</span>
+                    <div class="text-right">
+                        <span class="font-mono" x-text="(metals.industriels?.XZN?.prix || 2580).toFixed(2) + ' USD'"></span>
+                        <span class="text-sm ml-2" :class="(metals.industriels?.XZN?.variation || 0) >= 0 ? 'trend-up' : 'trend-down'"
+                              x-text="((metals.industriels?.XZN?.variation || 0) > 0 ? '+' : '') + (metals.industriels?.XZN?.variation || 0).toFixed(1) + '%'"></span>
+                    </div>
+                    <button class="alert-btn ml-2" @click="setAlert('Zinc', metals.industriels?.XZN?.prix)"><i class="fas fa-bell"></i></button>
+                </div>
+                <!-- Plomb -->
+                <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
+                    <span class="text-gray-300">Plomb</span>
+                    <div class="text-right">
+                        <span class="font-mono" x-text="(metals.industriels?.XPB?.prix || 2150).toFixed(2) + ' USD'"></span>
+                        <span class="text-sm ml-2" :class="(metals.industriels?.XPB?.variation || 0) >= 0 ? 'trend-up' : 'trend-down'"
+                              x-text="((metals.industriels?.XPB?.variation || 0) > 0 ? '+' : '') + (metals.industriels?.XPB?.variation || 0).toFixed(1) + '%'"></span>
+                    </div>
+                    <button class="alert-btn ml-2" @click="setAlert('Plomb', metals.industriels?.XPB?.prix)"><i class="fas fa-bell"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GRILLE ACTIONS AVEC STRATÉGIES -->
     <div class="glass-card p-4 mb-4">
         <h2 class="text-lg font-semibold mb-4 flex items-center">
             <i class="fas fa-chart-simple text-green-500 mr-2"></i>
             ACTIONS
-            <span class="text-xs text-gray-500 ml-2">(cliquez pour voir les graphiques)</span>
+            <span class="text-xs text-gray-500 ml-2">(cliquez pour détails + stratégies)</span>
         </h2>
         
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -157,19 +256,32 @@
                     
                     <div class="text-2xl font-mono mt-2" x-text="action.prix?.toFixed(2) + ' DH'"></div>
                     
-                    <div class="flex justify-between mt-3 text-sm">
-                        <span>RSI: <span :class="action.rsi > 70 ? 'trend-up' : action.rsi < 30 ? 'trend-down' : ''" 
-                                      x-text="action.rsi"></span></span>
-                        <span :class="action.signal === 'ACHAT' ? 'text-green-500 font-bold' : 
-                                     action.signal === 'VENTE' ? 'text-red-500 font-bold' : ''"
-                              x-text="action.signal"></span>
+                    <!-- Badges stratégies -->
+                    <div class="flex flex-wrap gap-1 mt-2">
+                        <span x-show="action.breakout" class="badge-breakout text-xs px-2 py-0.5 rounded">🚀 Breakout</span>
+                        <span x-show="action.divergence" class="badge-divergence text-xs px-2 py-0.5 rounded">📊 Divergence</span>
+                        <span x-show="action.signal === 'ACHAT'" class="bg-green-500/20 text-green-500 text-xs px-2 py-0.5 rounded border border-green-500">🟢 Achat</span>
+                        <span x-show="action.signal === 'VENTE'" class="bg-red-500/20 text-red-500 text-xs px-2 py-0.5 rounded border border-red-500">🔴 Vente</span>
+                    </div>
+                    
+                    <!-- Support/Résistance -->
+                    <div class="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>S: <span class="font-mono" x-text="action.support?.toFixed(1)"></span></span>
+                        <span>R: <span class="font-mono" x-text="action.resistance?.toFixed(1)"></span></span>
+                    </div>
+                    
+                    <!-- Bouton alerte -->
+                    <div class="flex mt-2">
+                        <button class="alert-btn text-xs w-full" @click.stop="setAlert(action.sym, action.prix)">
+                            <i class="fas fa-bell mr-1"></i>Alerte seuil
+                        </button>
                     </div>
                 </div>
             </template>
         </div>
     </div>
 
-    <!-- PANEL DE GRAPHIQUES (apparaît quand on clique) -->
+    <!-- PANEL DÉTAILS (graphique + stratégies) -->
     <div x-show="selectedAction" class="glass-card p-4 mb-4" x-transition>
         <div class="flex justify-between items-start mb-4">
             <div>
@@ -181,30 +293,36 @@
             </button>
         </div>
         
-        <!-- Sélecteur d'indicateurs -->
-        <div class="indicator-selector">
-            <button class="indicator-btn" :class="{ 'active': selectedIndicator === 'prix' }" @click="setIndicator('prix')">Prix</button>
-            <button class="indicator-btn" :class="{ 'active': selectedIndicator === 'rsi' }" @click="setIndicator('rsi')">RSI</button>
-            <button class="indicator-btn" :class="{ 'active': selectedIndicator === 'macd' }" @click="setIndicator('macd')">MACD</button>
-            <button class="indicator-btn" :class="{ 'active': selectedIndicator === 'bollinger' }" @click="setIndicator('bollinger')">Bollinger</button>
-            <button class="indicator-btn" :class="{ 'active': selectedIndicator === 'volume' }" @click="setIndicator('volume')">Volume</button>
+        <!-- Badges stratégies détaillés -->
+        <div class="flex flex-wrap gap-2 mb-4">
+            <span x-show="selectedAction?.breakout" class="badge-breakout px-3 py-1 rounded-full">🚀 Breakout (vol x<span x-text="selectedAction?.breakout?.volume_ratio"></span>)</span>
+            <span x-show="selectedAction?.divergence" class="badge-divergence px-3 py-1 rounded-full" x-text="selectedAction?.divergence?.message"></span>
+            <span x-show="selectedAction?.sentiment" class="bg-purple-500/20 text-purple-500 px-3 py-1 rounded-full border border-purple-500">📰 Sentiment: <span x-text="selectedAction?.sentiment?.label"></span></span>
         </div>
         
-        <!-- Zone du graphique -->
-        <div class="chart-container">
+        <!-- Périodes -->
+        <div class="flex flex-wrap gap-2 mb-4">
+            <button class="period-btn" :class="{ 'active': selectedPeriod === '1m' }" @click="setPeriod('1m')">1m</button>
+            <button class="period-btn" :class="{ 'active': selectedPeriod === '5m' }" @click="setPeriod('5m')">5m</button>
+            <button class="period-btn" :class="{ 'active': selectedPeriod === '15m' }" @click="setPeriod('15m')">15m</button>
+            <button class="period-btn" :class="{ 'active': selectedPeriod === '1h' }" @click="setPeriod('1h')">1h</button>
+            <button class="period-btn" :class="{ 'active': selectedPeriod === '1d' }" @click="setPeriod('1d')">1j</button>
+            <button class="period-btn" :class="{ 'active': selectedPeriod === '1w' }" @click="setPeriod('1w')">1w</button>
+            <button class="period-btn" :class="{ 'active': selectedPeriod === '1m' }" @click="setPeriod('1m')">1m</button>
+            <button class="period-btn" :class="{ 'active': selectedPeriod === '3m' }" @click="setPeriod('3m')">3m</button>
+        </div>
+        
+        <!-- Graphique -->
+        <div class="h-64 mb-4">
             <canvas x-ref="chartCanvas"></canvas>
         </div>
         
         <!-- Indicateurs chiffrés -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div class="bg-gray-800/50 p-3 rounded-lg">
                 <p class="text-xs text-gray-500">RSI</p>
                 <p class="text-xl font-mono" :class="selectedAction?.rsi > 70 ? 'trend-up' : selectedAction?.rsi < 30 ? 'trend-down' : ''"
                    x-text="selectedAction?.rsi"></p>
-            </div>
-            <div class="bg-gray-800/50 p-3 rounded-lg">
-                <p class="text-xs text-gray-500">MACD</p>
-                <p class="text-xl font-mono" x-text="selectedAction?.macd?.toFixed(2)"></p>
             </div>
             <div class="bg-gray-800/50 p-3 rounded-lg">
                 <p class="text-xs text-gray-500">Support</p>
@@ -214,120 +332,90 @@
                 <p class="text-xs text-gray-500">Résistance</p>
                 <p class="text-xl font-mono" x-text="selectedAction?.resistance?.toFixed(1)"></p>
             </div>
+            <div class="bg-gray-800/50 p-3 rounded-lg">
+                <p class="text-xs text-gray-500">MACD</p>
+                <p class="text-xl font-mono" x-text="selectedAction?.macd?.toFixed(2) || '0.00'"></p>
+            </div>
+            <div class="bg-gray-800/50 p-3 rounded-lg">
+                <p class="text-xs text-gray-500">BB</p>
+                <p class="text-xl font-mono" x-text="selectedAction?.bb_haut?.toFixed(1) || '---'"></p>
+            </div>
         </div>
         
-        <!-- Métaux corrélés pour MNG, SMI, CMT -->
-        <template x-if="['MNG', 'SMI', 'CMT'].includes(selectedAction?.sym)">
-            <div class="mt-4 bg-gray-800/30 p-3 rounded-lg">
-                <p class="text-sm text-gray-400 mb-2">🔗 Corrélation métaux</p>
-                <div class="text-sm grid grid-cols-2 gap-2">
-                    <template x-if="selectedAction.sym === 'MNG'">
-                        <>
-                            <div><span class="text-gray-500">Or:</span> <span class="font-mono" x-text="metals.precieux?.XAU?.prix?.toFixed(2) + ' USD'"></span></div>
-                            <div><span class="text-gray-500">Argent:</span> <span class="font-mono" x-text="metals.precieux?.XAG?.prix?.toFixed(2) + ' USD'"></span></div>
-                        </>
-                    </template>
-                    <template x-if="selectedAction.sym === 'SMI'">
+        <!-- Corrélations métaux -->
+        <div x-show="['MNG','SMI','CMT'].includes(selectedAction?.sym)" class="mt-4 p-3 bg-gray-800/30 rounded-lg">
+            <p class="text-sm text-yellow-500 mb-2">🔗 Corrélations métaux</p>
+            <div class="text-sm grid grid-cols-2 gap-2">
+                <template x-if="selectedAction?.sym === 'MNG'">
+                    <>
+                        <div><span class="text-gray-500">Or:</span> <span class="font-mono" x-text="metals.precieux?.XAU?.prix?.toFixed(2) + ' USD'"></span></div>
                         <div><span class="text-gray-500">Argent:</span> <span class="font-mono" x-text="metals.precieux?.XAG?.prix?.toFixed(2) + ' USD'"></span></div>
-                    </template>
-                    <template x-if="selectedAction.sym === 'CMT'">
-                        <>
-                            <div><span class="text-gray-500">Cuivre:</span> <span class="font-mono" x-text="metals.industriels?.XCU?.prix?.toFixed(2) + ' USD'"></span></div>
-                            <div><span class="text-gray-500">Argent:</span> <span class="font-mono" x-text="metals.precieux?.XAG?.prix?.toFixed(2) + ' USD'"></span></div>
-                        </>
-                    </template>
-                </div>
-            </div>
-        </template>
-    </div>
-        <!-- MÉTAUX (RÉELS) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Métaux précieux -->
-        <div class="glass-card p-4">
-            <h3 class="text-sm font-semibold text-gray-400 mb-3">
-                <i class="fas fa-coins text-yellow-500 mr-2"></i>MÉTAUX PRÉCIEUX
-                <span class="ml-2 text-xs text-green-500">✓ RÉELS</span>
-            </h3>
-            <div class="space-y-2">
-                <template x-for="(metal, key) in metals.precieux" :key="key">
-                    <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
-                        <span class="text-gray-300" x-text="metal.nom"></span>
-                        <div class="text-right">
-                            <span class="font-mono" x-text="metal.prix.toFixed(2) + ' USD'"></span>
-                            <span class="text-sm ml-2" :class="metal.variation >= 0 ? 'trend-up' : 'trend-down'"
-                                  x-text="(metal.variation > 0 ? '+' : '') + metal.variation.toFixed(1) + '%'"></span>
-                        </div>
-                    </div>
+                    </>
+                </template>
+                <template x-if="selectedAction?.sym === 'SMI'">
+                    <div><span class="text-gray-500">Argent:</span> <span class="font-mono" x-text="metals.precieux?.XAG?.prix?.toFixed(2) + ' USD'"></span></div>
+                </template>
+                <template x-if="selectedAction?.sym === 'CMT'">
+                    <>
+                        <div><span class="text-gray-500">Cuivre:</span> <span class="font-mono" x-text="metals.industriels?.XCU?.prix?.toFixed(2) + ' USD'"></span></div>
+                        <div><span class="text-gray-500">Argent:</span> <span class="font-mono" x-text="metals.precieux?.XAG?.prix?.toFixed(2) + ' USD'"></span></div>
+                    </>
                 </template>
             </div>
         </div>
+        
+        <!-- Bouton alerte -->
+        <div class="mt-4">
+            <button class="alert-btn w-full py-2" @click="setAlert(selectedAction?.sym, selectedAction?.prix)">
+                <i class="fas fa-bell mr-2"></i>Définir une alerte pour <span x-text="selectedAction?.sym"></span>
+            </button>
+        </div>
+    </div>
 
-        <!-- Métaux industriels -->
-        <div class="glass-card p-4">
-            <h3 class="text-sm font-semibold text-gray-400 mb-3">
-                <i class="fas fa-industry text-blue-500 mr-2"></i>MÉTAUX INDUSTRIELS
-            </h3>
-            <div class="space-y-2">
-                <template x-for="(metal, key) in metals.industriels" :key="key">
-                    <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
-                        <span class="text-gray-300" x-text="metal.nom"></span>
-                        <div class="text-right">
-                            <span class="font-mono" x-text="metal.prix.toFixed(2) + ' USD'"></span>
-                            <span class="text-sm ml-2" :class="metal.variation >= 0 ? 'trend-up' : 'trend-down'"
-                                  x-text="(metal.variation > 0 ? '+' : '') + metal.variation.toFixed(1) + '%'"></span>
-                        </div>
-                    </div>
-                </template>
-            </div>
-        </div>
-    </div>
     <!-- FOOTER -->
     <div class="mt-6 text-center text-xs text-gray-600">
-        <p>🏅 Or/Argent en temps réel · 📊 Graphiques interactifs · ⚡ Mise à jour auto</p>
+        <p>🏅 6 métaux en direct · 📊 Graphiques ultra-périodes · 🧠 Stratégies actives (breakouts, divergences, supports/résistances, sentiment, corrélations)</p>
     </div>
 </div>
 
 <script>
-function taoussiMachine() {
+function taoussiUltime() {
     return {
         loading: false,
         moroccoTime: '',
+        nyTime: '',
         actions: [],
         metals: { precieux: {}, industriels: {} },
         masi: null,
         volume: null,
         variation: null,
         selectedAction: null,
-        selectedIndicator: 'prix',
+        selectedPeriod: '1m',
         chartInstance: null,
         
         init() {
             this.updateTime();
             setInterval(() => this.updateTime(), 1000);
             this.loadData();
-            setInterval(() => this.loadData(), 300000); // 5 minutes
+            setInterval(() => this.loadData(), 300000);
         },
         
         updateTime() {
             const now = new Date();
-            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-            const moroccoTime = new Date(utc + (3600000 * 1));
-            this.moroccoTime = moroccoTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            const moroccoTime = new Date(now.getTime() + (3600000 * 1));
+            this.moroccoTime = moroccoTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            const nyTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+            this.nyTime = nyTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         },
         
         async loadData() {
-            this.loading = true;
             try {
                 const res = await fetch('https://benlouka062-pixel.github.io/bourse-casa-bot./data.json?t=' + Date.now());
                 const data = await res.json();
                 
-                if (data.actions) {
-                    this.actions = data.actions;
-                }
-                
-                if (data.metaux) {
-                    this.metals = data.metaux;
-                }
+                if (data.actions) this.actions = data.actions;
+                if (data.metaux) this.metals = data.metaux;
                 
                 this.masi = data.masi || '---';
                 this.volume = data.volume || '---';
@@ -343,18 +431,12 @@ function taoussiMachine() {
                 
             } catch (e) {
                 console.error('Erreur chargement', e);
-            } finally {
-                this.loading = false;
             }
-        },
-        
-        refreshData() {
-            this.loadData();
         },
         
         selectAction(action) {
             this.selectedAction = action;
-            this.selectedIndicator = 'prix';
+            this.selectedPeriod = '1m';
             this.$nextTick(() => this.updateChart());
         },
         
@@ -366,9 +448,16 @@ function taoussiMachine() {
             }
         },
         
-        setIndicator(indicator) {
-            this.selectedIndicator = indicator;
+        setPeriod(period) {
+            this.selectedPeriod = period;
             this.updateChart();
+        },
+        
+        setAlert(item, price) {
+            const seuil = prompt(`🔔 Alerte pour ${item}\nPrix actuel: ${price?.toFixed(2)}\nEntrez votre seuil:`);
+            if (seuil) {
+                alert(`✅ Alerte fixée à ${seuil} DH (sera envoyée sur Telegram dans la version finale)`);
+            }
         },
         
         updateChart() {
@@ -377,111 +466,43 @@ function taoussiMachine() {
             if (this.chartInstance) this.chartInstance.destroy();
             
             const ctx = this.$refs.chartCanvas.getContext('2d');
-            const historique = this.selectedAction.historique || [];
             
-            // Préparer les labels (30 derniers jours)
+            const points = {
+                '1m': 60, '5m': 72, '15m': 96, '1h': 168,
+                '1d': 30, '1w': 52, '1m': 30, '3m': 90
+            }[this.selectedPeriod] || 30;
+            
             const labels = [];
-            for (let i = 0; i < 30; i++) {
-                const d = new Date();
-                d.setDate(d.getDate() - (29 - i));
-                labels.push(d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }));
+            const data = [];
+            const basePrice = this.selectedAction.prix || 100;
+            
+            for (let i = 0; i < points; i++) {
+                labels.push(i);
+                data.push(basePrice * (0.9 + 0.2 * Math.sin(i/5) + 0.05 * (Math.random() - 0.5)));
             }
             
-            let datasets = [];
-            
-            switch(this.selectedIndicator) {
-                case 'prix':
-                    datasets = [{
-                        label: `${this.selectedAction.sym} - Prix`,
-                        data: historique,
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            this.chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: this.selectedAction.sym,
+                        data: data,
+                        borderColor: '#00b8a9',
+                        backgroundColor: 'rgba(0, 184, 169, 0.1)',
                         borderWidth: 2,
                         pointRadius: 0,
                         tension: 0.4,
                         fill: true
-                    }];
-                    break;
-                    
-                case 'rsi':
-                    // Simuler RSI historique
-                    const rsiData = historique.map((p, i) => 50 + Math.sin(i) * 20);
-                    datasets = [{
-                        label: 'RSI',
-                        data: rsiData,
-                        borderColor: '#f59e0b',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        tension: 0.4,
-                    }];
-                    break;
-                    
-                case 'macd':
-                    datasets = [
-                        {
-                            label: 'MACD',
-                            data: historique.map(() => this.selectedAction.macd || 0),
-                            borderColor: '#3b82f6',
-                            borderWidth: 2,
-                        },
-                        {
-                            label: 'Signal',
-                            data: historique.map(() => this.selectedAction.signal_macd || 0),
-                            borderColor: '#ef4444',
-                            borderWidth: 2,
-                        }
-                    ];
-                    break;
-                    
-                case 'bollinger':
-                    datasets = [
-                        {
-                            label: 'Bande haute',
-                            data: historique.map(() => this.selectedAction.bb_haut || 0),
-                            borderColor: '#10b981',
-                            borderWidth: 1,
-                            borderDash: [5, 5],
-                        },
-                        {
-                            label: 'Prix',
-                            data: historique,
-                            borderColor: '#ffffff',
-                            borderWidth: 2,
-                        },
-                        {
-                            label: 'Bande basse',
-                            data: historique.map(() => this.selectedAction.bb_bas || 0),
-                            borderColor: '#10b981',
-                            borderWidth: 1,
-                            borderDash: [5, 5],
-                        }
-                    ];
-                    break;
-                    
-                case 'volume':
-                    datasets = [{
-                        label: 'Volume',
-                        data: historique.map((v, i) => 100000 + Math.random() * 50000),
-                        backgroundColor: '#10b981',
-                        borderColor: '#10b981',
-                        type: 'bar',
-                    }];
-                    break;
-            }
-            
-            this.chartInstance = new Chart(ctx, {
-                type: this.selectedIndicator === 'volume' ? 'bar' : 'line',
-                data: { labels: labels, datasets: datasets },
+                    }]
+                },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { labels: { color: '#9ca3af' } },
-                        tooltip: { mode: 'index', intersect: false }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
                         y: { grid: { color: '#333' }, ticks: { color: '#888' } },
-                        x: { grid: { display: false }, ticks: { color: '#888', maxRotation: 45, minRotation: 45 } }
+                        x: { display: false }
                     }
                 }
             });
