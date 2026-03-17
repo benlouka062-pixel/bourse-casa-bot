@@ -1,5 +1,5 @@
 {
-  "date": "17/03/2026 21:02:02",
+  "date": "17/03/2026 21:35:08",
   "source": "\ud83d\udce1 TEMPS R\u00c9EL",
   "masi": null,
   "volume": "N/A",
@@ -301,6 +301,57 @@
         715.85,
         722.8000000000001
       ]
+    },
+    {
+      "sym": "CRS",
+      "nom": "CARTIER SAADA",
+      "prix": 29.0,
+      "rsi": 50,
+      "signal": "ATTENTE",
+      "support": 28.13,
+      "resistance": 29.87,
+      "source": "R\u00c9EL",
+      "historique": [
+        29.0,
+        29.29,
+        29.580000000000002,
+        29.87,
+        30.16
+      ]
+    },
+    {
+      "sym": "COL",
+      "nom": "COLORADO",
+      "prix": 86.0,
+      "rsi": 50,
+      "signal": "ATTENTE",
+      "support": 83.42,
+      "resistance": 88.58,
+      "source": "R\u00c9EL",
+      "historique": [
+        86.0,
+        86.86,
+        87.72,
+        88.58,
+        89.44
+      ]
+    },
+    {
+      "sym": "SOT",
+      "nom": "SOTHEMA",
+      "prix": 580.0,
+      "rsi": 50,
+      "signal": "ATTENTE",
+      "support": 562.6,
+      "resistance": 597.4,
+      "source": "R\u00c9EL",
+      "historique": [
+        580.0,
+        585.8,
+        591.6,
+        597.4,
+        603.2
+      ]
     }
   ],
   "metaux": {
@@ -316,22 +367,6 @@
         "variation": 1.2
       }
     },
-    "industriels": {
-      "XCU": {
-        "nom": "Cuivre",
-        "prix": 4.25,
-        "variation": 0.3
-      },
-      "XPB": {
-        "nom": "Plomb",
-        "prix": 2150,
-        "variation": -0.2
-      },
-      "XZN": {
-        "nom": "Zinc",
-        "prix": 2580,
-        "variation": 0.5
-      }
-    }
+    "industriels": {}
   }
 }
