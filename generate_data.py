@@ -7,9 +7,9 @@ from datetime import datetime
 # === CONFIGURATION ===
 BOT_TOKEN = "8342446918:AAG4cuQKWZypIeAmfTy45PB0r7hQ8QFjhqo"
 CHAT_ID = "8150604747"
-ALPHA_VANTAGE_KEY = "XC6GGBXO6U4RQTGR"  # TA CLÉ EXISTANTE
+TWELVE_DATA_KEY = "c2449bacc81b426884c2ab2a69c21df3"  # TA CLÉ
 
-# === ACTIONS MAROCAINES (suffixe .CAS pour Alpha Vantage) ===
+# === ACTIONS MAROCAINES (suffixe .CAS pour Twelve Data) ===
 ACTIONS = {
     "ADH": "ADH.CAS", "DHO": "DHO.CAS", "ENL": "ENL.CAS", "IAM": "IAM.CAS",
     "AGZ": "AGZ.CAS", "TQM": "TQM.CAS", "ATW": "ATW.CAS", "BCP": "BCP.CAS",
@@ -23,33 +23,30 @@ NOMS = {
 }
 
 # === FONCTIONS ===
-def get_price_from_alpha(symbol):
-    """Récupère le dernier prix depuis Alpha Vantage"""
+def get_price_from_twelve(symbol):
+    """Récupère le dernier prix depuis Twelve Data"""
     try:
-        url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_VANTAGE_KEY}"
+        url = f"https://api.twelvedata.com/price?symbol={symbol}&apikey={TWELVE_DATA_KEY}"
         r = requests.get(url, timeout=10)
         data = r.json()
-        
-        if "Global Quote" in data and "05. price" in data["Global Quote"]:
-            return float(data["Global Quote"]["05. price"])
+        if "price" in data:
+            return float(data["price"])
+        else:
+            print(f"  ⚠️ Twelve Data: {data.get('message', 'pas de prix')}")
     except Exception as e:
-        print(f"Erreur Alpha Vantage pour {symbol}: {e}")
+        print(f"  ❌ Erreur Twelve Data: {e}")
     return None
 
-def get_historique_from_alpha(symbol):
+def get_historique_from_twelve(symbol):
     """Récupère l'historique sur 30 jours"""
     try:
-        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={ALPHA_VANTAGE_KEY}"
+        url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval=1day&outputsize=30&apikey={TWELVE_DATA_KEY}"
         r = requests.get(url, timeout=10)
         data = r.json()
-        
-        if "Time Series (Daily)" in data:
-            series = data["Time Series (Daily)"]
-            # Trier par date et prendre les 30 derniers
-            dates = sorted(series.keys(), reverse=True)[:30]
-            return [float(series[d]["4. close"]) for d in dates]
-    except Exception as e:
-        print(f"Erreur historique {symbol}: {e}")
+        if "values" in data:
+            return [float(v["close"]) for v in data["values"]]
+    except:
+        pass
     return []
 
 def calculer_rsi(prix_historique):
@@ -70,7 +67,7 @@ def calculer_rsi(prix_historique):
     return round(100 - (100 / (1 + rs)), 1)
 
 def get_metaux_reels():
-    """Récupère les métaux via GoldAPI (inchangé)"""
+    """GoldAPI (inchangé)"""
     metals = {"precieux": {}, "industriels": {}}
     GOLD_API_KEY = "goldapi-kqb19mlv7mcz7-io"
     
@@ -104,7 +101,7 @@ def get_metaux_reels():
     except:
         metals["precieux"]["XAG"] = {"nom": "Argent", "prix": 28.75, "variation": 1.2}
     
-    # Métaux industriels (simulés)
+    # Métaux industriels
     metals["industriels"] = {
         "XCU": {"nom": "Cuivre", "prix": 4.25, "variation": 0.3},
         "XPB": {"nom": "Plomb", "prix": 2150, "variation": -0.2},
@@ -119,30 +116,28 @@ def lire_ancien_cache():
     return {"actions": []}
 
 def main():
-    print("🔍 Récupération des données (Alpha Vantage)...")
+    print("🔍 Récupération des données (Twelve Data)...")
     
     ancien_cache = lire_ancien_cache()
     anciennes_actions = {a['sym']: a for a in ancien_cache.get('actions', [])}
     
     actions_data = []
-    source_globale = "📡 ALPHA VANTAGE"
+    source_globale = "📡 TWELVE DATA"
     
     for sym, ticker in ACTIONS.items():
         print(f"  → {sym} ({ticker})...", end=" ")
         
-        # Essayer de récupérer le prix
-        prix = get_price_from_alpha(ticker)
+        # Essayer Twelve Data
+        prix = get_price_from_twelve(ticker)
         
         if prix:
             # Nouveau prix trouvé
-            historique = get_historique_from_alpha(ticker)
+            historique = get_historique_from_twelve(ticker)
             rsi = calculer_rsi(historique) if historique else 50
             
-            # Support/résistance simplifiés
             support = round(prix * 0.97, 2)
             resistance = round(prix * 1.03, 2)
             
-            # Signal
             if rsi < 30:
                 signal = "ACHAT"
             elif rsi > 70:
@@ -165,17 +160,17 @@ def main():
             print(f"✅ {prix} DH")
             source_globale = "📡 TEMPS RÉEL"
         else:
-            # Pas de nouveau prix → on garde l'ancien cache
+            # Pas de prix → cache
             if sym in anciennes_actions:
                 ancien = anciennes_actions[sym].copy()
                 ancien['source'] = "💾 CACHE"
                 actions_data.append(ancien)
                 print(f"💾 cache ({ancien.get('prix', '?')} DH)")
-                source_globale = "💾 CACHE (marché fermé)"
+                source_globale = "💾 CACHE"
             else:
                 print("❌ aucune donnée")
         
-        time.sleep(12)  # Respect des limites API Alpha Vantage (5 appels/min)
+        time.sleep(1)  # Politesse
     
     # Métaux
     metaux = get_metaux_reels()
@@ -183,7 +178,7 @@ def main():
     output = {
         "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
         "source": source_globale,
-        "masi": None,  # À ajouter plus tard
+        "masi": None,
         "volume": "N/A",
         "variation": "N/A",
         "actions": actions_data,
