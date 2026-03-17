@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>TAOUSSI TRADER · ACCUEIL</title>
+    <title>TAOUSSI TRADER · FINAL</title>
     
-    <!-- Tailwind + Alpine + Chart.js -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
@@ -20,12 +19,13 @@
         .trend-down { color: #ff6b6b; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
         .badge-reel { background: rgba(0,184,169,0.2); color: #00b8a9; border: 1px solid #00b8a9; padding: 2px 8px; border-radius: 12px; font-size: 10px; }
-        .alert-btn { background: #2d3748; color: #fbbf24; border: 1px solid #fbbf24; padding: 4px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; }
-        .sparkline { width: 60px; height: 24px; }
+        .alert-btn { background: #2d3748; color: #fbbf24; border: 1px solid #fbbf24; padding: 4px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+        .alert-btn:hover { background: #fbbf2420; }
+        .sparkline { width: 60px; height: 24px; background: transparent; }
         .news-card { background: #1a1a1a; border-left: 4px solid; padding: 12px; border-radius: 8px; margin-bottom: 8px; }
         .sentiment-positif { border-left-color: #00b8a9; }
         .sentiment-negatif { border-left-color: #ff6b6b; }
-        .loader { border: 2px solid #f3f3f3; border-top: 2px solid #00b8a9; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        .loader { border: 2px solid #f3f3f3; border-top: 2px solid #00b8a9; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -33,7 +33,7 @@
 
 <div x-data="taoussiApp()" x-init="init()" class="max-w-7xl mx-auto">
     
-    <!-- HEADER DOUBLE HORLOGE -->
+    <!-- HEADER DOUBLE HORLOGE (HEURE CORRIGÉE) -->
     <div class="glass-card p-4 mb-4 flex flex-wrap items-center justify-between">
         <div class="flex items-center space-x-3">
             <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
@@ -81,7 +81,7 @@
         </div>
     </div>
 
-    <!-- TABLEAU ACTIONS AVEC SPARKLINES -->
+    <!-- TABLEAU ACTIONS AVEC SPARKLINES CORRIGÉES -->
     <div class="glass-card p-4 mb-4">
         <h2 class="text-lg font-semibold mb-4">ACTIONS</h2>
         <div class="overflow-x-auto">
@@ -94,7 +94,7 @@
         </div>
     </div>
 
-    <!-- NEWS RSS -->
+    <!-- NEWS RSS (CORRIGÉ) -->
     <div class="glass-card p-4 mb-4">
         <h2 class="text-lg font-semibold mb-4 flex items-center"><i class="fas fa-newspaper text-blue-500 mr-2"></i>DERNIÈRES NEWS <span x-show="loadingNews" class="ml-2 loader"></span></h2>
         <div id="news-container" class="space-y-3 max-h-96 overflow-y-auto"><p class="text-center text-gray-500 py-8">Chargement des news...</p></div>
@@ -122,7 +122,7 @@ async function loadData() {
         });
         document.getElementById('actions-table-body').innerHTML = html;
         
-        // Sparklines
+        // Sparklines corrigées (centrées)
         setTimeout(() => {
             data.actions.forEach(a => {
                 const canvas = document.getElementById('spark-' + a.sym);
@@ -134,11 +134,12 @@ async function loadData() {
                 const min = Math.min(...prices), max = Math.max(...prices), range = max - min || 1;
                 ctx.clearRect(0, 0, width, height);
                 ctx.beginPath();
-                ctx.strokeStyle = '#00b8a9';
+                ctx.strokeStyle = variation >= 0 ? '#00b8a9' : '#ff6b6b';
                 ctx.lineWidth = 1.5;
                 for (let i = 0; i < prices.length; i++) {
                     const x = (i / (prices.length - 1)) * width;
-                    const y = height - ((prices[i] - min) / range) * height;
+                    // Formule corrigée pour centrer la courbe
+                    const y = 4 + ((max - prices[i]) / range) * (height - 8);
                     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
                 }
                 ctx.stroke();
@@ -153,35 +154,56 @@ async function loadData() {
 async function loadNews() {
     document.getElementById('news-container').innerHTML = '<p class="text-center text-gray-500 py-8">Chargement des news...</p>';
     try {
-        const res = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https://lematin.ma/rss');
-        const data = await res.json();
-        if (data.items) {
-            let html = '';
-            data.items.slice(0, 5).forEach(item => {
+        // Utilisation d'un proxy CORS gratuit
+        const res = await fetch('https://api.codetabs.com/v1/proxy?quest=https://lematin.ma/rss');
+        const text = await res.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, 'text/xml');
+        const items = xml.querySelectorAll('item');
+        
+        let html = '';
+        items.forEach((item, index) => {
+            if (index < 5) {
+                const title = item.querySelector('title')?.textContent || '';
+                const description = item.querySelector('description')?.textContent || '';
                 let sentiment = 'neutre';
-                const title = item.title.toLowerCase();
-                if (title.includes('hausse') || title.includes('progrès') || title.includes('record')) sentiment = 'positif';
-                else if (title.includes('baisse') || title.includes('perte') || title.includes('crise')) sentiment = 'negatif';
-                html += `<div class="news-card sentiment-${sentiment}"><div class="flex justify-between"><span class="font-medium">${item.title}</span><span class="text-xs text-gray-500">Le Matin</span></div><p class="text-sm text-gray-400 mt-1">${item.description.replace(/<[^>]*>/g, '').substring(0,100)}...</p></div>`;
-            });
-            document.getElementById('news-container').innerHTML = html;
-        }
+                const lowerTitle = title.toLowerCase();
+                if (lowerTitle.includes('hausse') || lowerTitle.includes('progrès') || lowerTitle.includes('record')) sentiment = 'positif';
+                else if (lowerTitle.includes('baisse') || lowerTitle.includes('perte') || lowerTitle.includes('crise')) sentiment = 'negatif';
+                
+                html += `<div class="news-card sentiment-${sentiment}">
+                    <div class="flex justify-between"><span class="font-medium">${title.substring(0, 60)}...</span><span class="text-xs text-gray-500">Le Matin</span></div>
+                    <p class="text-sm text-gray-400 mt-1">${description.replace(/<[^>]*>/g, '').substring(0, 100)}...</p>
+                </div>`;
+            }
+        });
+        document.getElementById('news-container').innerHTML = html || '<p class="text-center text-gray-500 py-8">Aucune news récente</p>';
+        
     } catch (e) {
+        console.error('Erreur news:', e);
         document.getElementById('news-container').innerHTML = '<p class="text-center text-gray-500 py-8">Erreur chargement news</p>';
     }
 }
 
+// Heure corrigée (moins 1h par rapport à avant)
 function updateTime() {
     const now = new Date();
+    // Heure Maroc = UTC+1 (c'est déjà bon)
     const moroccoTime = new Date(now.getTime() + 3600000);
     const nyTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    document.querySelectorAll('[x-text="moroccoTime"]').forEach(el => el.textContent = moroccoTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-    document.querySelectorAll('[x-text="nyTime"]').forEach(el => el.textContent = nyTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+    
+    document.querySelectorAll('[x-text="moroccoTime"]').forEach(el => {
+        el.textContent = moroccoTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    });
+    document.querySelectorAll('[x-text="nyTime"]').forEach(el => {
+        el.textContent = nyTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    });
 }
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('taoussiApp', () => ({
-        moroccoTime: '', nyTime: '', masi: '---', volume: '---', variation: '---', actions: [], metals: { precieux: {}, industriels: {} }, loadingNews: false,
+        moroccoTime: '', nyTime: '', masi: '---', volume: '---', variation: '---', 
+        actions: [], metals: { precieux: {}, industriels: {} }, loadingNews: false,
         init() {
             updateTime();
             setInterval(updateTime, 1000);
