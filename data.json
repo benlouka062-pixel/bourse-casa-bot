@@ -1,5 +1,5 @@
 {
-  "date": "17/03/2026 00:45:29",
+  "date": "17/03/2026 00:48:58",
   "source": "\ud83d\udce1 GOLDAPI + INDICATEURS",
   "masi": null,
   "volume": "N/A",
@@ -586,12 +586,12 @@
     "precieux": {
       "XAU": {
         "nom": "Or",
-        "prix": 5001.65,
+        "prix": 5000.35,
         "variation": 0.8
       },
       "XAG": {
         "nom": "Argent",
-        "prix": 80.36,
+        "prix": 80.29,
         "variation": 1.2
       }
     },
