@@ -18,16 +18,9 @@ INVESTING_URLS = {
     "ADH": "https://www.investing.com/equities/addoha",
     "DHO": "https://www.investing.com/equities/delta-holding",
     "ENL": "https://www.investing.com/equities/ennakl",
-    "IAM": "https://fr.investing.com/equities/itissalat-al-maghrib",          # ✅ Nouveau lien
-    "AGZ": "https://fr.investing.com/equities/afriquia-gaz",                  # ✅ Nouveau lien
-    "TQM": "https://fr.investing.com/equities/jorf-lasfar",                   # ✅ Nouveau lien (Taqa)
-    "MNG": "https://fr.investing.com/equities/managem",                       # ✅ Nouveau lien
-    "SMI": "https://fr.investing.com/equities/smi",                           # ✅ Nouveau lien
-    "CMT": "https://fr.investing.com/equities/miniere-touissit",              # ✅ Nouveau lien
     "TGCC": "https://www.investing.com/equities/tgcc",
     "CRS": "https://www.investing.com/equities/cartier-saada",
     "COL": "https://www.investing.com/equities/colorado",
-    "SOT": "https://www.investing.com/equities/sothema",
     "SNA": "https://fr.investing.com/equities/stokvis-nord",
     "PRO": "https://fr.investing.com/equities/promopharm-s.a",
 }
