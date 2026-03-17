@@ -11,6 +11,7 @@ from datetime import datetime
 BOT_TOKEN = "8342446918:AAG4cuQKWZypIeAmfTy45PB0r7hQ8QFjhqo"
 CHAT_ID = "8150604747"
 SCRAPINGBEE_KEY = "R0081TLRJSB7TS1VMAHXSFFE8TW8LEDNZ9MW56QCC3I830HIM4CJGELD5YFPG5XJ6GQ4FRQT7ZIMOFZ4"
+COMMODITY_API_KEY = "1a4e70c1-3a1e-4f6e-b985-c1dfb40aca22"
 
 # === MAPPING DES URLS INVESTING.COM ===
 INVESTING_URLS = {
@@ -25,13 +26,21 @@ INVESTING_URLS = {
     "CIH": "https://www.investing.com/equities/cih",
     "MNG": "https://www.investing.com/equities/managem",
     "SMI": "https://www.investing.com/equities/smi",
-    "CMT": "https://www.investing.com/equities/ciments-du-maroc"
+    "CMT": "https://www.investing.com/equities/ciments-du-maroc",
+    "TGCC": "https://www.investing.com/equities/tgcc",
+    "CRS": "https://www.investing.com/equities/cartier-saada",
+    "COL": "https://www.investing.com/equities/colorado",
+    "SOT": "https://www.investing.com/equities/sothema",
+    "SNA": "https://fr.investing.com/equities/stokvis-nord",
+    "PRO": "https://fr.investing.com/equities/promopharm-s.a",
 }
 
 NOMS = {
     "ADH": "ADDOHA", "DHO": "DELTA HOLDING", "ENL": "ENNAKL", "IAM": "ITISSALAT",
     "AGZ": "AFRIQUIA GAZ", "TQM": "TAQA MOROCCO", "ATW": "ATTIJARI", "BCP": "BCP",
-    "CIH": "CIH", "MNG": "MANAGEM", "SMI": "SMI", "CMT": "CMT"
+    "CIH": "CIH", "MNG": "MANAGEM", "SMI": "SMI", "CMT": "CMT",
+    "TGCC": "TGCC", "CRS": "CARTIER SAADA", "COL": "COLORADO", "SOT": "SOTHEMA",
+    "SNA": "STOKVIS NORD", "PRO": "PROMOPHARM"
 }
 
 # === FONCTION SCRAPING AVEC SCRAPINGBEE ===
@@ -92,9 +101,9 @@ def calculer_rsi(prix_historique):
     rs = gains / pertes
     return round(100 - (100 / (1 + rs)), 1)
 
-# === FONCTION POUR LES MÉTAUX VIA GOLDAPI ===
-def get_metaux_reels():
-    metals = {"precieux": {}, "industriels": {}}
+# === FONCTION POUR LES MÉTAUX PRÉCIEUX VIA GOLDAPI ===
+def get_metaux_precieux():
+    metals = {}
     GOLD_API_KEY = "goldapi-kqb19mlv7mcz7-io"
 
     # Or
@@ -104,14 +113,15 @@ def get_metaux_reels():
         r = requests.get(url, headers=headers, timeout=10)
         if r.status_code == 200:
             data = r.json()
-            metals["precieux"]["XAU"] = {
-                "nom": "Or", "prix": round(data.get('price', 2350), 2),
+            metals["XAU"] = {
+                "nom": "Or",
+                "prix": round(data.get('price', 2350), 2),
                 "variation": round(data.get('cp', 0.8), 2)
             }
         else:
-            metals["precieux"]["XAU"] = {"nom": "Or", "prix": 2350.50, "variation": 0.8}
+            metals["XAU"] = {"nom": "Or", "prix": 2350.50, "variation": 0.8}
     except:
-        metals["precieux"]["XAU"] = {"nom": "Or", "prix": 2350.50, "variation": 0.8}
+        metals["XAU"] = {"nom": "Or", "prix": 2350.50, "variation": 0.8}
 
     time.sleep(1)
 
@@ -122,20 +132,77 @@ def get_metaux_reels():
         r = requests.get(url, headers=headers, timeout=10)
         if r.status_code == 200:
             data = r.json()
-            metals["precieux"]["XAG"] = {
-                "nom": "Argent", "prix": round(data.get('price', 28.75), 2),
+            metals["XAG"] = {
+                "nom": "Argent",
+                "prix": round(data.get('price', 28.75), 2),
                 "variation": round(data.get('cp', 1.2), 2)
             }
         else:
-            metals["precieux"]["XAG"] = {"nom": "Argent", "prix": 28.75, "variation": 1.2}
+            metals["XAG"] = {"nom": "Argent", "prix": 28.75, "variation": 1.2}
     except:
-        metals["precieux"]["XAG"] = {"nom": "Argent", "prix": 28.75, "variation": 1.2}
+        metals["XAG"] = {"nom": "Argent", "prix": 28.75, "variation": 1.2}
 
-    # Métaux industriels (simulés)
-    metals["industriels"] = {
+    return metals
+
+# === FONCTION POUR LES MÉTAUX INDUSTRIELS VIA COMMODITYPRICEAPI ===
+def get_metaux_industriels():
+    """Récupère les prix du cuivre, plomb, zinc via CommodityPriceAPI."""
+    metals = {}
+    try:
+        # L'API attend des symboles comme "copper", "zinc", "lead"
+        symbols = "copper,zinc,lead"
+        url = f"https://api.commoditypriceapi.com/v2/rates/latest?symbols={symbols}&apiKey={COMMODITY_API_KEY}"
+        r = requests.get(url, timeout=10)
+        data = r.json()
+        
+        # La réponse contient probablement une structure avec les prix
+        # Format typique: {"success": true, "rates": {"copper": 4.25, ...}}
+        if data.get("success"):
+            rates = data.get("rates", {})
+            # Cuivre (en USD/lb)
+            if "copper" in rates:
+                metals["XCU"] = {
+                    "nom": "Cuivre",
+                    "prix": round(float(rates["copper"]), 2),
+                    "variation": 0.0  # L'API ne donne pas la variation, on laisse 0
+                }
+            # Zinc (USD/t) – vérifier l'unité, l'API donne probablement en USD/t
+            if "zinc" in rates:
+                metals["XZN"] = {
+                    "nom": "Zinc",
+                    "prix": round(float(rates["zinc"]), 2),
+                    "variation": 0.0
+                }
+            # Plomb (USD/t)
+            if "lead" in rates:
+                metals["XPB"] = {
+                    "nom": "Plomb",
+                    "prix": round(float(rates["lead"]), 2),
+                    "variation": 0.0
+                }
+        else:
+            # Si l'API échoue, on utilise les valeurs simulées
+            print("⚠️ CommodityPriceAPI a échoué, utilisation des valeurs simulées.")
+            metals = get_fallback_industrial_metals()
+    except Exception as e:
+        print(f"❌ Erreur CommodityPriceAPI: {e}")
+        metals = get_fallback_industrial_metals()
+    
+    return metals
+
+def get_fallback_industrial_metals():
+    """Valeurs de secours pour les métaux industriels."""
+    return {
         "XCU": {"nom": "Cuivre", "prix": 4.25, "variation": 0.3},
         "XPB": {"nom": "Plomb", "prix": 2150, "variation": -0.2},
         "XZN": {"nom": "Zinc", "prix": 2580, "variation": 0.5}
+    }
+
+# === FONCTION PRINCIPALE POUR LES MÉTAUX ===
+def get_metaux_reels():
+    metals = {
+        "precieux": get_metaux_precieux(),
+        "industriels": get_metaux_industriels()
     }
     return metals
 
@@ -219,6 +286,7 @@ def main():
 
     print(f"\n✅ Fichier data.json généré avec {len(actions_data)} actions")
     print(f"📦 Source: {source_globale}")
+    print(f"🏅 Métaux: {len(metaux['precieux'])} précieux, {len(metaux['industriels'])} industriels")
 
 if __name__ == "__main__":
     main()
