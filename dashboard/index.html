@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>TAOUSSI TRADER · PR</title>
+    <title>TAOUSSI TRADER · FINAL</title>
     
-    <!-- Tailwind + Alpine + Chart.js + Font Awesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
@@ -13,486 +12,184 @@
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@100..800&display=swap');
-        
         * { font-family: 'Inter', sans-serif; }
-        body { background: #0f0f0f; color: #e0e0e0; transition: background 0.3s, color 0.3s; }
-        body.light-mode { background: #f5f5f5; color: #1f2937; }
-        
-        .glass-card { 
-            background: rgba(22, 22, 22, 0.95); 
-            backdrop-filter: blur(10px); 
-            border: 1px solid rgba(255,255,255,0.03);
-            border-radius: 1rem;
-            transition: background 0.3s;
-        }
-        .light-mode .glass-card { background: rgba(255, 255, 255, 0.9); border-color: rgba(0,0,0,0.1); }
-        
+        body { background: #0f0f0f; color: #e0e0e0; }
+        .glass-card { background: rgba(22, 22, 22, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.03); border-radius: 1rem; }
         .trend-up { color: #00b8a9; }
         .trend-down { color: #ff6b6b; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        
-        .badge-reel {
-            background: rgba(0, 184, 169, 0.2);
-            color: #00b8a9;
-            border: 1px solid #00b8a9;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-        }
-        
-        .badge-fallback {
-            background: rgba(255,255,255,0.1);
-            color: #aaa;
-            border: 1px solid #333;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-        }
-        .light-mode .badge-fallback { background: #e5e7eb; color: #4b5563; border-color: #d1d5db; }
-        
-        .badge-breakout {
-            background: rgba(245, 158, 11, 0.2);
-            color: #fbbf24;
-            border: 1px solid #fbbf24;
-            animation: pulse 1.5s infinite;
-        }
-        
-        .badge-divergence {
-            background: rgba(77, 195, 255, 0.2);
-            color: #4dc3ff;
-            border: 1px solid #4dc3ff;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
-        }
-        
-        .period-btn {
-            background: #1f2937;
-            color: #9ca3af;
-            border: 1px solid #374151;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .light-mode .period-btn { background: #e5e7eb; color: #4b5563; border-color: #d1d5db; }
-        
-        .period-btn.active {
-            background: #00b8a9;
-            color: white;
-            border-color: #00b8a9;
-        }
-        
-        .alert-btn {
-            background: #2d3748;
-            color: #fbbf24;
-            border: 1px solid #fbbf24;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .alert-btn:hover { background: #fbbf2420; }
-        .light-mode .alert-btn { background: #fef3c7; color: #92400e; border-color: #fbbf24; }
-        
+        .badge-reel { background: rgba(0, 184, 169, 0.2); color: #00b8a9; border: 1px solid #00b8a9; padding: 2px 8px; border-radius: 12px; font-size: 10px; }
+        .alert-btn { background: #2d3748; color: #fbbf24; border: 1px solid #fbbf24; padding: 4px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; }
         .sparkline { width: 60px; height: 24px; }
-        
-        .news-card {
-            background: #1a1a1a;
-            border-left: 4px solid;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-        }
-        .light-mode .news-card { background: #ffffff; border-color: #e5e7eb; }
-        
+        .news-card { background: #1a1a1a; border-left: 4px solid; padding: 12px; border-radius: 8px; margin-bottom: 8px; }
         .sentiment-positif { border-left-color: #00b8a9; }
         .sentiment-negatif { border-left-color: #ff6b6b; }
-        .sentiment-neutre { border-left-color: #9ca3af; }
-        
-        .loader {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #00b8a9;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-        }
+        .loader { border: 2px solid #f3f3f3; border-top: 2px solid #00b8a9; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body :class="{ 'light-mode': isLightMode }" class="p-4 min-h-screen">
+<body class="p-4 min-h-screen">
 
 <div x-data="taoussiApp()" x-init="init()" class="max-w-7xl mx-auto">
     
-    <!-- HEADER avec bouton clair/nuit -->
+    <!-- HEADER -->
     <div class="glass-card p-4 mb-4 flex flex-wrap items-center justify-between">
         <div class="flex items-center space-x-3">
             <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
                 <i class="fas fa-chart-line text-white text-xl"></i>
             </div>
             <div>
-                <h1 class="text-2xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
-                    TAOUSSI TRADER
-                </h1>
-                <p class="text-xs text-gray-500" x-text="`${actions.length} actions · 6 métaux`"></p>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">TAOUSSI TRADER</h1>
+                <p class="text-xs text-gray-500" x-text="`${actions.length} actions`"></p>
             </div>
         </div>
-        
-        <div class="flex items-center space-x-4">
-            <button @click="toggleTheme" class="p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition">
-                <i :class="isLightMode ? 'fas fa-moon' : 'fas fa-sun'" class="text-yellow-500"></i>
-            </button>
-            <div class="flex flex-col items-end">
-                <div class="text-sm text-gray-500">🇲🇦 Maroc</div>
-                <div class="text-2xl font-mono font-bold" x-text="moroccoTime"></div>
-                <div class="text-sm text-gray-500">🇺🇸 USA</div>
-                <div class="text-lg font-mono" x-text="nyTime"></div>
-            </div>
+        <div class="flex flex-col items-end">
+            <div class="text-sm text-gray-500">🇲🇦 Maroc</div>
+            <div class="text-2xl font-mono font-bold" x-text="moroccoTime"></div>
         </div>
     </div>
 
     <!-- STATS MASI -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div class="glass-card p-4">
-            <p class="text-gray-500 text-sm">MASI</p>
-            <p class="text-2xl font-bold" x-text="masi || '---'"></p>
-        </div>
-        <div class="glass-card p-4">
-            <p class="text-gray-500 text-sm">Volume</p>
-            <p class="text-2xl font-bold" x-text="volume || '---'"></p>
-        </div>
-        <div class="glass-card p-4">
-            <p class="text-gray-500 text-sm">Variation</p>
-            <p class="text-2xl font-bold" x-text="variation || '---'"></p>
-        </div>
+        <div class="glass-card p-4"><p class="text-gray-500 text-sm">MASI</p><p class="text-2xl font-bold" x-text="masi || '---'"></p></div>
+        <div class="glass-card p-4"><p class="text-gray-500 text-sm">Volume</p><p class="text-2xl font-bold" x-text="volume || '---'"></p></div>
+        <div class="glass-card p-4"><p class="text-gray-500 text-sm">Variation</p><p class="text-2xl font-bold" x-text="variation || '---'"></p></div>
     </div>
 
-    <!-- 6 MÉTAUX AVEC ALERTES -->
+    <!-- MÉTAUX -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <!-- Métaux précieux -->
         <div class="glass-card p-4">
-            <h3 class="text-sm font-semibold text-gray-400 mb-3">
-                <i class="fas fa-coins text-yellow-500 mr-2"></i>MÉTAUX PRÉCIEUX
-                <span class="ml-2 text-xs text-green-500">✓ RÉELS</span>
-            </h3>
+            <h3 class="text-sm font-semibold text-gray-400 mb-3"><i class="fas fa-coins text-yellow-500 mr-2"></i>MÉTAUX PRÉCIEUX</h3>
             <div class="space-y-2">
-                <!-- Or -->
-                <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
-                    <span>Or</span>
-                    <div class="flex items-center space-x-3">
-                        <span class="font-mono" x-text="(metals.precieux?.XAU?.prix || 2350).toFixed(2) + ' USD'"></span>
-                        <span :class="(metals.precieux?.XAU?.variation || 0) >= 0 ? 'trend-up' : 'trend-down'"
-                              x-text="((metals.precieux?.XAU?.variation || 0) > 0 ? '+' : '') + (metals.precieux?.XAU?.variation || 0).toFixed(1) + '%'"></span>
-                        <button @click="setAlert('Or')" class="alert-btn"><i class="fas fa-bell"></i></button>
-                    </div>
-                </div>
-                <!-- Argent -->
-                <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
-                    <span>Argent</span>
-                    <div class="flex items-center space-x-3">
-                        <span class="font-mono" x-text="(metals.precieux?.XAG?.prix || 28.7).toFixed(2) + ' USD'"></span>
-                        <span :class="(metals.precieux?.XAG?.variation || 0) >= 0 ? 'trend-up' : 'trend-down'"
-                              x-text="((metals.precieux?.XAG?.variation || 0) > 0 ? '+' : '') + (metals.precieux?.XAG?.variation || 0).toFixed(1) + '%'"></span>
-                        <button @click="setAlert('Argent')" class="alert-btn"><i class="fas fa-bell"></i></button>
-                    </div>
-                </div>
+                <div class="flex justify-between items-center"><span>Or</span><span class="font-mono" x-text="(metals.precieux?.XAU?.prix || 2350).toFixed(2) + ' USD'"></span></div>
+                <div class="flex justify-between items-center"><span>Argent</span><span class="font-mono" x-text="(metals.precieux?.XAG?.prix || 28.7).toFixed(2) + ' USD'"></span></div>
             </div>
         </div>
-        
-        <!-- Métaux industriels -->
         <div class="glass-card p-4">
-            <h3 class="text-sm font-semibold text-gray-400 mb-3">
-                <i class="fas fa-industry text-blue-500 mr-2"></i>MÉTAUX INDUSTRIELS
-            </h3>
+            <h3 class="text-sm font-semibold text-gray-400 mb-3"><i class="fas fa-industry text-blue-500 mr-2"></i>MÉTAUX INDUSTRIELS</h3>
             <div class="space-y-2">
-                <!-- Cuivre -->
-                <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
-                    <span>Cuivre</span>
-                    <div class="flex items-center space-x-3">
-                        <span class="font-mono" x-text="(metals.industriels?.XCU?.prix || 4.25).toFixed(2) + ' USD'"></span>
-                        <span :class="(metals.industriels?.XCU?.variation || 0) >= 0 ? 'trend-up' : 'trend-down'"
-                              x-text="((metals.industriels?.XCU?.variation || 0) > 0 ? '+' : '') + (metals.industriels?.XCU?.variation || 0).toFixed(1) + '%'"></span>
-                        <button @click="setAlert('Cuivre')" class="alert-btn"><i class="fas fa-bell"></i></button>
-                    </div>
-                </div>
-                <!-- Zinc -->
-                <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
-                    <span>Zinc</span>
-                    <div class="flex items-center space-x-3">
-                        <span class="font-mono" x-text="(metals.industriels?.XZN?.prix || 2580).toFixed(2) + ' USD'"></span>
-                        <span :class="(metals.industriels?.XZN?.variation || 0) >= 0 ? 'trend-up' : 'trend-down'"
-                              x-text="((metals.industriels?.XZN?.variation || 0) > 0 ? '+' : '') + (metals.industriels?.XZN?.variation || 0).toFixed(1) + '%'"></span>
-                        <button @click="setAlert('Zinc')" class="alert-btn"><i class="fas fa-bell"></i></button>
-                    </div>
-                </div>
-                <!-- Plomb -->
-                <div class="flex justify-between items-center p-2 hover:bg-gray-800 rounded-lg">
-                    <span>Plomb</span>
-                    <div class="flex items-center space-x-3">
-                        <span class="font-mono" x-text="(metals.industriels?.XPB?.prix || 2150).toFixed(2) + ' USD'"></span>
-                        <span :class="(metals.industriels?.XPB?.variation || 0) >= 0 ? 'trend-up' : 'trend-down'"
-                              x-text="((metals.industriels?.XPB?.variation || 0) > 0 ? '+' : '') + (metals.industriels?.XPB?.variation || 0).toFixed(1) + '%'"></span>
-                        <button @click="setAlert('Plomb')" class="alert-btn"><i class="fas fa-bell"></i></button>
-                    </div>
-                </div>
+                <div class="flex justify-between items-center"><span>Cuivre</span><span class="font-mono" x-text="(metals.industriels?.XCU?.prix || 4.25).toFixed(2) + ' USD'"></span></div>
+                <div class="flex justify-between items-center"><span>Zinc</span><span class="font-mono" x-text="(metals.industriels?.XZN?.prix || 2580).toFixed(2) + ' USD'"></span></div>
+                <div class="flex justify-between items-center"><span>Plomb</span><span class="font-mono" x-text="(metals.industriels?.XPB?.prix || 2150).toFixed(2) + ' USD'"></span></div>
             </div>
         </div>
     </div>
 
-    <!-- TABLEAU DES ACTIONS AVEC SPARKLINES -->
+    <!-- TABLEAU ACTIONS -->
     <div class="glass-card p-4 mb-4">
-        <h2 class="text-lg font-semibold mb-4 flex items-center">
-            <i class="fas fa-chart-simple text-green-500 mr-2"></i>
-            ACTIONS
-        </h2>
-        
+        <h2 class="text-lg font-semibold mb-4">ACTIONS</h2>
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead class="text-gray-400 text-sm border-b border-gray-800">
-                    <tr>
-                        <th class="text-left py-3">Symbole</th>
-                        <th class="text-left">Nom</th>
-                        <th class="text-right">Prix</th>
-                        <th class="text-right">Variation</th>
-                        <th class="text-right hidden md:table-cell">Tendance</th>
-                        <th class="text-center">Signal</th>
-                        <th class="text-center">Alerte</th>
-                    </tr>
+                    <tr><th class="text-left py-3">Symbole</th><th class="text-left">Nom</th><th class="text-right">Prix</th><th class="text-right">Variation</th><th class="text-right hidden md:table-cell">Tendance</th><th class="text-center">Détail</th></tr>
                 </thead>
-                <tbody>
-                    <template x-for="action in actions" :key="action.sym">
-                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition cursor-pointer" @click="goToDetail(action.sym)">
-                            <td class="py-3 font-mono font-bold" x-text="action.sym"></td>
-                            <td class="text-gray-300 text-sm" x-text="action.nom"></td>
-                            <td class="text-right font-mono" x-text="action.prix?.toFixed(2)"></td>
-                            <td class="text-right font-mono" :class="action.change >= 0 ? 'trend-up' : 'trend-down'"
-                                x-text="(action.change > 0 ? '+' : '') + (action.change || 0).toFixed(1) + '%'"></td>
-                            <td class="text-right hidden md:table-cell">
-                                <canvas class="sparkline" :id="'spark-' + action.sym" width="60" height="24"></canvas>
-                            </td>
-                            <td class="text-center">
-                                <span x-show="action.signal === 'ACHAT'" class="text-green-500">🟢</span>
-                                <span x-show="action.signal === 'VENTE'" class="text-red-500">🔴</span>
-                                <span x-show="!action.signal || action.signal === 'ATTENTE'" class="text-gray-500">⚪</span>
-                            </td>
-                            <td class="text-center">
-                                <button @click.stop="setAlert(action.sym)" class="alert-btn text-xs py-1 px-2">
-                                    <i class="fas fa-bell"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    </template>
+                <tbody id="actions-table-body">
+                    <!-- Rempli par JavaScript -->
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- BLOC NEWS AVEC FLUX RSS RÉEL -->
+    <!-- NEWS -->
     <div class="glass-card p-4 mb-4">
-        <h2 class="text-lg font-semibold mb-4 flex items-center">
-            <i class="fas fa-newspaper text-blue-500 mr-2"></i>
-            DERNIÈRES NEWS
-            <span x-show="loadingNews" class="ml-2 loader"></span>
-        </h2>
-        <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
-            <template x-for="(news, index) in newsList" :key="index">
-                <div class="news-card" :class="'sentiment-' + news.sentiment">
-                    <div class="flex justify-between">
-                        <span class="font-medium" x-text="news.title"></span>
-                        <span class="text-xs text-gray-500" x-text="news.source"></span>
-                    </div>
-                    <p class="text-sm text-gray-400 mt-1" x-text="news.snippet"></p>
-                    <div class="flex items-center mt-2">
-                        <span class="text-xs" :class="{
-                            'text-green-500': news.sentiment === 'positif',
-                            'text-red-500': news.sentiment === 'negatif',
-                            'text-gray-500': news.sentiment === 'neutre'
-                        }" x-text="'Sentiment: ' + news.sentiment"></span>
-                    </div>
-                </div>
-            </template>
-            <p x-show="newsList.length === 0 && !loadingNews" class="text-center text-gray-500 py-8">Aucune news récente</p>
+        <h2 class="text-lg font-semibold mb-4 flex items-center"><i class="fas fa-newspaper text-blue-500 mr-2"></i>DERNIÈRES NEWS <span x-show="loadingNews" class="ml-2 loader"></span></h2>
+        <div id="news-container" class="space-y-3 max-h-96 overflow-y-auto">
+            <p class="text-center text-gray-500 py-8">Chargement des news...</p>
         </div>
-    </div>
-
-    <!-- FOOTER -->
-    <div class="mt-4 text-center text-xs text-gray-600">
-        <p>Cliquez sur une action pour voir sa page détaillée · 6 métaux en direct · News RSS Maroc</p>
     </div>
 </div>
 
 <script>
-function taoussiApp() {
-    return {
-        // État global
-        isLightMode: false,
-        moroccoTime: '',
-        nyTime: '',
-        actions: [],
-        metals: { precieux: {}, industriels: {} },
-        masi: null,
-        volume: null,
-        variation: null,
-        newsList: [],
-        loadingNews: false,
+async function loadData() {
+    try {
+        const res = await fetch('https://benlouka062-pixel.github.io/bourse-casa-bot/data.json?t=' + Date.now());
+        const data = await res.json();
         
-        init() {
-            this.updateTime();
-            setInterval(() => this.updateTime(), 1000);
-            this.loadData();
-            setInterval(() => this.loadData(), 300000);
-            this.loadNews();
-            setInterval(() => this.loadNews(), 600000); // 10 minutes
-        },
+        // Afficher les actions
+        let html = '';
+        data.actions.forEach(a => {
+            const variation = (Math.random() * 4 - 2).toFixed(1);
+            html += `<tr class="border-b border-gray-800 hover:bg-gray-800/50 transition cursor-pointer" onclick="window.location.href='detail.html?symbol=${a.sym}'">
+                <td class="py-3 font-mono font-bold">${a.sym}</td>
+                <td class="text-gray-300 text-sm">${a.nom || ''}</td>
+                <td class="text-right font-mono">${a.prix?.toFixed(2) || '---'}</td>
+                <td class="text-right font-mono ${variation >= 0 ? 'trend-up' : 'trend-down'}">${variation >= 0 ? '+' : ''}${variation}%</td>
+                <td class="text-right hidden md:table-cell"><canvas class="sparkline" id="spark-${a.sym}" width="60" height="24"></canvas></td>
+                <td class="text-center"><button class="alert-btn text-xs py-1 px-2" onclick="event.stopPropagation();alert('Alerte pour ${a.sym} (à connecter)')"><i class="fas fa-bell"></i></button></td>
+            </tr>`;
+        });
+        document.getElementById('actions-table-body').innerHTML = html;
         
-        updateTime() {
-            const now = new Date();
-            const moroccoTime = new Date(now.getTime() + (3600000 * 1));
-            this.moroccoTime = moroccoTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            
-            const nyTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-            this.nyTime = nyTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-        },
-        
-        async loadData() {
-            try {
-                const res = await fetch('https://benlouka062-pixel.github.io/bourse-casa-bot/data.json?t=' + Date.now());
-                const data = await res.json();
-                
-                if (data.actions) {
-                    this.actions = data.actions.map(a => ({
-                        ...a,
-                        change: (Math.random() * 4 - 2) // variation simulée pour test
-                    }));
-                    this.$nextTick(() => this.drawSparklines());
+        // Dessiner les sparklines
+        setTimeout(() => {
+            data.actions.forEach(a => {
+                const canvas = document.getElementById('spark-' + a.sym);
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const width = 60, height = 24;
+                const dataPoints = [];
+                for (let i = 0; i < 10; i++) dataPoints.push(a.prix * (0.95 + 0.01 * i + (Math.random() * 0.02 - 0.01)));
+                const min = Math.min(...dataPoints), max = Math.max(...dataPoints), range = max - min || 1;
+                ctx.clearRect(0, 0, width, height);
+                ctx.beginPath();
+                ctx.strokeStyle = '#00b8a9';
+                ctx.lineWidth = 1.5;
+                for (let i = 0; i < dataPoints.length; i++) {
+                    const x = (i / (dataPoints.length - 1)) * width;
+                    const y = height - ((dataPoints[i] - min) / range) * height;
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
                 }
-                if (data.metaux) this.metals = data.metaux;
-                
-                this.masi = data.masi || '---';
-                this.volume = data.volume || '---';
-                this.variation = data.variation || '---';
-                
-            } catch (e) {
-                console.error('Erreur chargement', e);
-            }
-        },
+                ctx.stroke();
+            });
+        }, 200);
         
-        async loadNews() {
-            this.loadingNews = true;
-            try {
-                // Flux RSS réels (via rss2json pour contourner CORS)
-                const feeds = [
-                    { name: 'Le Matin', url: 'https://lematin.ma/rss' },
-                    { name: 'Le 360', url: 'https://le360.ma/rss' },
-                    { name: 'Boursenews', url: 'https://www.boursenews.ma/feed/' }
-                ];
-                
-                const allNews = [];
-                
-                for (const feed of feeds) {
-                    const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`);
-                    const data = await res.json();
-                    
-                    if (data.items) {
-                        data.items.slice(0, 3).forEach(item => {
-                            // Analyse sentiment simplifiée
-                            let sentiment = 'neutre';
-                            const title = item.title.toLowerCase();
-                            if (title.includes('hausse') || title.includes('progrès') || title.includes('record')) {
-                                sentiment = 'positif';
-                            } else if (title.includes('baisse') || title.includes('perte') || title.includes('crise')) {
-                                sentiment = 'negatif';
-                            }
-                            
-                            allNews.push({
-                                title: item.title,
-                                snippet: item.description.replace(/<[^>]*>/g, '').substring(0, 100) + '...',
-                                source: feed.name,
-                                sentiment: sentiment
-                            });
-                        });
-                    }
-                }
-                
-                // Trier par date (approximatif)
-                this.newsList = allNews.slice(0, 10);
-                
-            } catch (e) {
-                console.error('Erreur chargement news', e);
-                // Fallback news simulées
-                this.newsList = [
-                    { title: 'MASI en hausse de 1.2% à la clôture', source: 'Le Matin', snippet: 'Le marché a terminé dans le vert porté par les valeurs bancaires.', sentiment: 'positif' },
-                    { title: 'IAM annonce un nouveau plan d\'investissement', source: 'Le 360', snippet: 'L\'opérateur télécoms prévoit 2 MMDH sur 3 ans.', sentiment: 'positif' },
-                    { title: 'Tensions sur les cours du pétrole', source: 'Boursenews', snippet: 'Les prix du brut grimpent après les annonces de l\'OPEP.', sentiment: 'negatif' },
-                    { title: 'Managem publie ses résultats annuels', source: 'L\'Economiste', snippet: 'Le chiffre d\'affaires progresse de 8% grâce aux métaux précieux.', sentiment: 'positif' }
-                ];
-            } finally {
-                this.loadingNews = false;
-            }
-        },
-        
-        drawSparklines() {
-            setTimeout(() => {
-                this.actions.forEach(action => {
-                    const canvas = document.getElementById('spark-' + action.sym);
-                    if (!canvas) return;
-                    
-                    const ctx = canvas.getContext('2d');
-                    const width = 60, height = 24;
-                    
-                    // Données simulées (prix historiques)
-                    const data = [];
-                    const basePrice = action.prix || 100;
-                    for (let i = 0; i < 10; i++) {
-                        data.push(basePrice * (0.95 + 0.01 * i + (Math.random() * 0.02 - 0.01)));
-                    }
-                    
-                    // Normalisation
-                    const min = Math.min(...data);
-                    const max = Math.max(...data);
-                    const range = max - min || 1;
-                    
-                    ctx.clearRect(0, 0, width, height);
-                    ctx.beginPath();
-                    ctx.strokeStyle = action.change >= 0 ? '#00b8a9' : '#ff6b6b';
-                    ctx.lineWidth = 1.5;
-                    
-                    for (let i = 0; i < data.length; i++) {
-                        const x = (i / (data.length - 1)) * width;
-                        const y = height - ((data[i] - min) / range) * height;
-                        
-                        if (i === 0) ctx.moveTo(x, y);
-                        else ctx.lineTo(x, y);
-                    }
-                    ctx.stroke();
-                });
-            }, 200);
-        },
-        
-        goToDetail(symbol) {
-            window.location.href = `/dashboard/detail.html?symbol=${symbol}`;
-        },
-        
-        setAlert(item) {
-            const seuil = prompt(`🔔 Alerte pour ${item}\nEntrez votre seuil:`);
-            if (seuil) {
-                alert(`✅ Alerte fixée à ${seuil} (sera envoyée sur Telegram)`);
-            }
-        },
-        
-        toggleTheme() {
-            this.isLightMode = !this.isLightMode;
-            document.body.classList.toggle('light-mode', this.isLightMode);
-        }
+    } catch (e) {
+        document.getElementById('actions-table-body').innerHTML = '<tr><td colspan="6" class="text-center py-8 text-red-500">Erreur chargement</td></tr>';
     }
 }
-</script>
 
+async function loadNews() {
+    document.getElementById('news-container').innerHTML = '<p class="text-center text-gray-500 py-8">Chargement des news...</p>';
+    try {
+        const res = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https://lematin.ma/rss');
+        const data = await res.json();
+        if (data.items) {
+            let html = '';
+            data.items.slice(0, 5).forEach(item => {
+                let sentiment = 'neutre';
+                const title = item.title.toLowerCase();
+                if (title.includes('hausse') || title.includes('progrès')) sentiment = 'positif';
+                else if (title.includes('baisse') || title.includes('crise')) sentiment = 'negatif';
+                html += `<div class="news-card sentiment-${sentiment}"><div class="flex justify-between"><span class="font-medium">${item.title}</span><span class="text-xs text-gray-500">Le Matin</span></div><p class="text-sm text-gray-400 mt-1">${item.description.replace(/<[^>]*>/g, '').substring(0, 100)}...</p></div>`;
+            });
+            document.getElementById('news-container').innerHTML = html;
+        } else {
+            document.getElementById('news-container').innerHTML = '<p class="text-center text-gray-500 py-8">Aucune news récente</p>';
+        }
+    } catch (e) {
+        document.getElementById('news-container').innerHTML = '<p class="text-center text-gray-500 py-8">Erreur chargement news</p>';
+    }
+}
+
+// Heure Maroc
+function updateTime() {
+    const now = new Date();
+    const moroccoTime = new Date(now.getTime() + 3600000);
+    document.querySelector('[x-text="moroccoTime"]').textContent = moroccoTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+// Initialisation
+document.addEventListener('alpine:init', () => {
+    Alpine.data('taoussiApp', () => ({
+        moroccoTime: '', masi: '---', volume: '---', variation: '---', actions: [], metals: { precieux: {}, industriels: {} }, loadingNews: false,
+        init() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            loadData().then(() => { this.actions = window.actions || []; });
+            loadNews();
+        }
+    }));
+});
+</script>
 </body>
 </html>
