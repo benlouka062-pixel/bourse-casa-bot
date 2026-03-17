@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+from scrapingbee import ScrapingBeeClient
 import json
 import time
 import os
@@ -9,6 +10,7 @@ from datetime import datetime
 # === CONFIGURATION ===
 BOT_TOKEN = "8342446918:AAG4cuQKWZypIeAmfTy45PB0r7hQ8QFjhqo"
 CHAT_ID = "8150604747"
+SCRAPINGBEE_KEY = "R0081TLRJSB7TS1VMAHXSFFE8TW8LEDNZ9MW56QCC3I830HIM4CJGELD5YFPG5XJ6GQ4FRQT7ZIMOFZ4"
 
 # === MAPPING DES URLS INVESTING.COM ===
 INVESTING_URLS = {
@@ -32,48 +34,29 @@ NOMS = {
     "CIH": "CIH", "MNG": "MANAGEM", "SMI": "SMI", "CMT": "CMT"
 }
 
-# === FONCTION DE SCRAPING INVESTING.COM (améliorée) ===
-def get_price_from_investing(symbol, url):
-    """Scrape le prix depuis Investing.com en utilisant les données structurées."""
+# === FONCTION SCRAPING AVEC SCRAPINGBEE ===
+def get_price_with_scrapingbee(symbol, url):
+    """Utilise ScrapingBee pour contourner les blocages."""
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-        r = requests.get(url, headers=headers, timeout=15)
-        if r.status_code != 200:
-            print(f"  ⚠️ {symbol}: HTTP {r.status_code}")
+        client = ScrapingBeeClient(api_key=SCRAPINGBEE_KEY)
+        response = client.get(
+            url,
+            params={
+                'render_js': False,
+                'premium_proxy': True,
+                'country_code': 'ma',
+                'block_resources': True,
+                'wait': 1500,
+            }
+        )
+
+        if response.status_code != 200:
+            print(f"  ⚠️ {symbol}: ScrapingBee HTTP {response.status_code}")
             return None
 
-        soup = BeautifulSoup(r.text, 'html.parser')
+        soup = BeautifulSoup(response.content, 'html.parser')
 
-        # 1. Chercher dans les balises script de type application/ld+json
-        scripts = soup.find_all('script', type='application/ld+json')
-        for script in scripts:
-            try:
-                data = json.loads(script.string)
-                # Parcourir récursivement les données
-                if isinstance(data, dict):
-                    if 'price' in data:
-                        return float(data['price'])
-                    if 'offers' in data and isinstance(data['offers'], dict):
-                        if 'price' in data['offers']:
-                            return float(data['offers']['price'])
-                elif isinstance(data, list):
-                    for item in data:
-                        if isinstance(item, dict):
-                            if 'price' in item:
-                                return float(item['price'])
-                            if 'offers' in item and isinstance(item['offers'], dict) and 'price' in item['offers']:
-                                return float(item['offers']['price'])
-            except:
-                continue
-
-        # 2. Chercher dans les balises meta
-        price_meta = soup.find('meta', {'property': 'product:price:amount'})
-        if price_meta and price_meta.get('content'):
-            return float(price_meta['content'])
-
-        # 3. Chercher dans les balises span avec attributs spécifiques
+        # Chercher dans le span spécifique
         price_span = soup.find('span', {'data-test': 'instrument-price-last'})
         if price_span:
             text = price_span.text.strip().replace(',', '').replace(' ', '')
@@ -81,22 +64,19 @@ def get_price_from_investing(symbol, url):
             if match:
                 return float(match.group(1))
 
-        # 4. Regex générale dans le texte (près de "MAD" ou "price")
+        # Fallback : regex dans tout le texte
         page_text = soup.text
         match = re.search(r'(\d+\.?\d*)\s*MAD', page_text)
         if match:
             return float(match.group(1))
-        match = re.search(r'[Pp]rice["\']?\s*:\s*["\']?(\d+\.?\d*)', page_text)
-        if match:
-            return float(match.group(1))
 
     except Exception as e:
-        print(f"  ❌ Erreur scraping {symbol}: {e}")
+        print(f"  ❌ Erreur ScrapingBee {symbol}: {e}")
     return None
 
-# === FONCTIONS POUR LES INDICATEURS (simplifiés) ===
+# === FONCTIONS POUR LES INDICATEURS ===
 def calculer_rsi(prix_historique):
-    """RSI simplifié (pour l'exemple, on pourra améliorer)"""
+    """RSI simplifié."""
     if len(prix_historique) < 15:
         return 50
     gains = 0
@@ -151,7 +131,7 @@ def get_metaux_reels():
     except:
         metals["precieux"]["XAG"] = {"nom": "Argent", "prix": 28.75, "variation": 1.2}
 
-    # Métaux industriels (simulés, on pourra les remplacer plus tard)
+    # Métaux industriels (simulés)
     metals["industriels"] = {
         "XCU": {"nom": "Cuivre", "prix": 4.25, "variation": 0.3},
         "XPB": {"nom": "Plomb", "prix": 2150, "variation": -0.2},
@@ -168,17 +148,17 @@ def lire_ancien_cache():
 
 # === MAIN ===
 def main():
-    print("🔍 Récupération des données (Investing.com)...")
+    print("🔍 Récupération des données (Investing.com via ScrapingBee)...")
 
     ancien_cache = lire_ancien_cache()
     anciennes_actions = {a['sym']: a for a in ancien_cache.get('actions', [])}
 
     actions_data = []
-    source_globale = "📡 INVESTING.COM"
+    source_globale = "📡 SCRAPINGBEE"
 
     for sym, url in INVESTING_URLS.items():
         print(f"  → {sym}...", end=" ")
-        prix = get_price_from_investing(sym, url)
+        prix = get_price_with_scrapingbee(sym, url)
 
         if prix:
             # Générer un petit historique factice autour du prix
