@@ -3,118 +3,302 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>TAOUSSI TRADER · DÉTAIL</title>
+    <title>TAOUSSI CAPITAL · DÉTAIL</title>
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lightweight Charts (TradingView) -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Alpine.js -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@100..800&display=swap');
         * { font-family: 'Inter', sans-serif; }
-        body { background: #0f0f0f; color: #e0e0e0; }
+        body { background: #0f0f0f; color: #e5e7eb; }
         .glass-card { background: rgba(22,22,22,0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.03); border-radius: 1rem; }
-        .trend-up { color: #00b8a9; }
-        .trend-down { color: #ff6b6b; }
+        .trend-up { color: #26a69a; }
+        .trend-down { color: #ef5350; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        .period-btn { background: #1f2937; color: #9ca3af; border: 1px solid #374151; padding: 4px 10px; border-radius: 20px; font-size: 12px; cursor: pointer; }
-        .period-btn.active { background: #00b8a9; color: white; border-color: #00b8a9; }
-        .alert-btn { background: #2d3748; color: #fbbf24; border: 1px solid #fbbf24; padding: 8px 16px; border-radius: 30px; font-size: 14px; cursor: pointer; }
-        .back-btn { background: #2d3748; color: white; padding: 8px 16px; border-radius: 30px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+        
+        .period-btn {
+            background: #2a2a2a;
+            color: #aaa;
+            border: 1px solid #444;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.9rem;
+        }
+        .period-btn.active {
+            background: #26a69a;
+            color: white;
+            border-color: #26a69a;
+        }
+        .period-btn:hover {
+            background: #3a3a3a;
+        }
+        
+        .back-btn {
+            background: #2a2a2a;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid #444;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .back-btn:hover {
+            background: #3a3a3a;
+        }
+        
+        .indicator-card {
+            background: #1a1a1a;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
     </style>
 </head>
 <body class="p-4 min-h-screen">
 
-<div class="max-w-7xl mx-auto">
+<div x-data="detailApp()" x-init="init()" class="max-w-7xl mx-auto">
     
-    <!-- Bouton retour corrigé -->
+    <!-- Bouton retour -->
     <div class="mb-4">
-        <button onclick="window.location.href='index.html'" class="back-btn"><i class="fas fa-arrow-left"></i> Retour au tableau</button>
+        <button @click="goBack" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Retour au tableau
+        </button>
     </div>
 
-    <div x-data="detailApp()" x-init="init()">
-        <!-- HEADER action -->
-        <div class="glass-card p-6 mb-6" x-show="action">
-            <div class="flex flex-wrap justify-between items-center">
-                <div><h1 class="text-3xl font-bold" x-text="action?.sym"></h1><p class="text-gray-400" x-text="action?.nom"></p></div>
-                <div class="text-right"><div class="text-4xl font-mono font-bold" :class="variation >= 0 ? 'trend-up' : 'trend-down'" x-text="action?.prix?.toFixed(2) + ' DH'"></div><p class="text-lg" :class="variation >= 0 ? 'trend-up' : 'trend-down'" x-text="(variation > 0 ? '+' : '') + variation.toFixed(2) + '%'"></p></div>
-            </div>
+    <!-- En-tête de l'action -->
+    <div class="glass-card p-6 mb-6 flex flex-wrap justify-between items-center" x-show="action">
+        <div>
+            <h1 class="text-3xl font-bold" x-text="action?.sym"></h1>
+            <p class="text-gray-400" x-text="action?.nom"></p>
         </div>
-
-        <!-- Périodes -->
-        <div class="glass-card p-4 mb-6">
-            <div class="flex flex-wrap gap-2 justify-center">
-                <button class="period-btn" :class="{ 'active': period === '1m' }" @click="setPeriod('1m')">1 min</button>
-                <button class="period-btn" :class="{ 'active': period === '5m' }" @click="setPeriod('5m')">5 min</button>
-                <button class="period-btn" :class="{ 'active': period === '15m' }" @click="setPeriod('15m')">15 min</button>
-                <button class="period-btn" :class="{ 'active': period === '1h' }" @click="setPeriod('1h')">1 heure</button>
-                <button class="period-btn" :class="{ 'active': period === '1d' }" @click="setPeriod('1d')">1 jour</button>
-                <button class="period-btn" :class="{ 'active': period === '1w' }" @click="setPeriod('1w')">1 semaine</button>
-                <button class="period-btn" :class="{ 'active': period === '1m' }" @click="setPeriod('1m')">1 mois</button>
-                <button class="period-btn" :class="{ 'active': period === '3m' }" @click="setPeriod('3m')">3 mois</button>
-            </div>
+        <div class="text-right">
+            <div class="text-4xl font-mono font-bold" :class="variation >= 0 ? 'trend-up' : 'trend-down'" x-text="action?.prix?.toFixed(2) + ' DH'"></div>
+            <p class="text-lg" :class="variation >= 0 ? 'trend-up' : 'trend-down'" x-text="(variation > 0 ? '+' : '') + variation.toFixed(2) + '%'"></p>
         </div>
+    </div>
 
-        <!-- Graphique -->
-        <div class="glass-card p-6 mb-6">
-            <div class="h-96"><canvas x-ref="chartCanvas"></canvas></div>
+    <!-- Boutons de période -->
+    <div class="glass-card p-4 mb-6 flex flex-wrap gap-2 justify-center">
+        <button class="period-btn" :class="{ 'active': period === '1d' }" @click="setPeriod('1d')">1j</button>
+        <button class="period-btn" :class="{ 'active': period === '1w' }" @click="setPeriod('1w')">1s</button>
+        <button class="period-btn" :class="{ 'active': period === '1m' }" @click="setPeriod('1m')">1m</button>
+        <button class="period-btn" :class="{ 'active': period === '3m' }" @click="setPeriod('3m')">3m</button>
+    </div>
+
+    <!-- Conteneur du graphique -->
+    <div class="glass-card p-4 mb-6">
+        <div id="tvchart" style="width: 100%; height: 400px;"></div>
+    </div>
+
+    <!-- Indicateurs chiffrés -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="indicator-card">
+            <p class="text-gray-500 text-sm">RSI (14)</p>
+            <p class="text-2xl font-mono" :class="rsi > 70 ? 'trend-up' : rsi < 30 ? 'trend-down' : ''" x-text="rsi.toFixed(1)"></p>
         </div>
-
-        <!-- Indicateurs -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div class="bg-gray-800 p-4 rounded"><p class="text-gray-500 text-sm">RSI</p><p class="text-3xl font-mono" :class="action?.rsi > 70 ? 'trend-up' : action?.rsi < 30 ? 'trend-down' : ''" x-text="action?.rsi || '--'"></p></div>
-            <div class="bg-gray-800 p-4 rounded"><p class="text-gray-500 text-sm">MACD</p><p class="text-3xl font-mono" x-text="action?.macd?.toFixed(2) || '0.00'"></p></div>
-            <div class="bg-gray-800 p-4 rounded"><p class="text-gray-500 text-sm">Support</p><p class="text-3xl font-mono" x-text="action?.support?.toFixed(1) || '--'"></p></div>
-            <div class="bg-gray-800 p-4 rounded"><p class="text-gray-500 text-sm">Résistance</p><p class="text-3xl font-mono" x-text="action?.resistance?.toFixed(1) || '--'"></p></div>
+        <div class="indicator-card">
+            <p class="text-gray-500 text-sm">EMA 20</p>
+            <p class="text-2xl font-mono" x-text="ema20.toFixed(2)"></p>
         </div>
-
-        <!-- Bouton alerte -->
-        <div class="text-center mb-8"><button @click="setAlert" class="alert-btn px-8 py-3 text-lg"><i class="fas fa-bell mr-2"></i>Alerte sur <span x-text="action?.sym"></span></button></div>
+        <div class="indicator-card">
+            <p class="text-gray-500 text-sm">EMA 50</p>
+            <p class="text-2xl font-mono" x-text="ema50.toFixed(2)"></p>
+        </div>
+        <div class="indicator-card">
+            <p class="text-gray-500 text-sm">Volume</p>
+            <p class="text-2xl font-mono" x-text="volume?.toLocaleString() || 'N/A'"></p>
+        </div>
     </div>
 </div>
 
 <script>
 function detailApp() {
     return {
-        action: null, period: '1d', variation: 0, chart: null,
+        action: null,
+        variation: 0,
+        period: '1m',
+        historique: [],
+        chart: null,
+        candlestickSeries: null,
+        ema20Line: null,
+        ema50Line: null,
+        rsi: 50,
+        ema20: 0,
+        ema50: 0,
+        volume: 0,
+
         async init() {
             const urlParams = new URLSearchParams(window.location.search);
             const symbol = urlParams.get('symbol');
-            if (!symbol) { window.location.href = 'index.html'; return; }
+            if (!symbol) {
+                window.location.href = 'index.html';
+                return;
+            }
             await this.loadData(symbol);
         },
+
         async loadData(symbol) {
             try {
                 const res = await fetch('https://benlouka062-pixel.github.io/bourse-casa-bot/data.json?t=' + Date.now());
                 const data = await res.json();
                 this.action = data.actions?.find(a => a.sym === symbol);
                 if (!this.action) return;
+
+                // Variation simulée (à remplacer par une vraie variation plus tard)
                 this.variation = (Math.random() * 4 - 2);
-                if (!this.action.rsi) this.action.rsi = 45 + Math.random() * 30;
-                if (!this.action.macd) this.action.macd = (Math.random() * 2 - 1);
-                if (!this.action.support) this.action.support = this.action.prix * 0.97;
-                if (!this.action.resistance) this.action.resistance = this.action.prix * 1.03;
-                this.$nextTick(() => this.updateChart());
-            } catch (e) { console.error(e); }
+
+                // Récupérer l'historique (liste de prix de clôture)
+                // Si l'historique est trop court, on le génère autour du prix actuel
+                if (this.action.historique && this.action.historique.length > 5) {
+                    this.historique = this.action.historique;
+                } else {
+                    // Fallback: générer un historique autour du prix actuel
+                    this.historique = [];
+                    for (let i = 0; i < 30; i++) {
+                        this.historique.push(this.action.prix * (0.95 + 0.01 * i));
+                    }
+                }
+
+                // Calcul des indicateurs
+                this.calculateIndicators();
+
+                // Dessiner le graphique
+                this.$nextTick(() => this.drawChart());
+
+            } catch (e) {
+                console.error('Erreur chargement', e);
+            }
         },
-        setPeriod(period) { this.period = period; this.updateChart(); },
-        updateChart() {
-            if (!this.action || !this.$refs.chartCanvas) return;
-            if (this.chart) this.chart.destroy();
-            const points = { '1m': 60, '5m': 72, '15m': 96, '1h': 168, '1d': 30, '1w': 52, '1m': 30, '3m': 90 }[this.period] || 30;
-            const labels = [], data = [];
-            const basePrice = this.action.prix || 100;
-            for (let i = 0; i < points; i++) { labels.push(i); data.push(basePrice * (0.9 + 0.2 * Math.sin(i/5) + 0.05 * (Math.random() - 0.5))); }
-            this.chart = new Chart(this.$refs.chartCanvas.getContext('2d'), {
-                type: 'line',
-                data: { labels, datasets: [{ label: this.action.sym, data, borderColor: '#00b8a9', backgroundColor: 'rgba(0,184,169,0.1)', borderWidth: 2, pointRadius: 0, tension: 0.4, fill: true }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#333' }, ticks: { color: '#888' } }, x: { display: false } } }
-            });
+
+        calculateIndicators() {
+            // Calcul EMA 20 et EMA 50
+            const prices = this.historique;
+            const ema20 = this.calculateEMA(prices, 20);
+            const ema50 = this.calculateEMA(prices, 50);
+            this.ema20 = ema20[ema20.length - 1] || 0;
+            this.ema50 = ema50[ema50.length - 1] || 0;
+
+            // Calcul RSI
+            this.rsi = this.calculateRSI(prices, 14);
         },
-        setAlert() { const seuil = prompt(`Alerte pour ${this.action.sym}\nPrix: ${this.action.prix.toFixed(2)} DH`); if (seuil) alert(`✅ Alerte fixée à ${seuil}`); }
+
+        calculateEMA(prices, period) {
+            if (prices.length < period) return prices.map(() => 0);
+            const k = 2 / (period + 1);
+            let ema = [prices[0]];
+            for (let i = 1; i < prices.length; i++) {
+                ema.push(prices[i] * k + ema[i-1] * (1 - k));
+            }
+            return ema;
+        },
+
+        calculateRSI(prices, period) {
+            if (prices.length < period + 1) return 50;
+            let gains = 0, losses = 0;
+            for (let i = 1; i <= period; i++) {
+                const diff = prices[prices.length - i] - prices[prices.length - i - 1];
+                if (diff > 0) gains += diff;
+                else losses -= diff;
+            }
+            if (losses === 0) return 100;
+            const rs = gains / losses;
+            return 100 - 100 / (1 + rs);
+        },
+
+        setPeriod(p) {
+            this.period = p;
+            this.drawChart();
+        },
+
+        drawChart() {
+            if (!this.chart) {
+                // Créer le chart une seule fois
+                this.chart = LightweightCharts.createChart(document.getElementById('tvchart'), {
+                    width: document.getElementById('tvchart').clientWidth,
+                    height: 400,
+                    layout: {
+                        backgroundColor: '#0f0f0f',
+                        textColor: '#d1d4dc',
+                    },
+                    grid: {
+                        vertLines: { color: '#1e1e1e' },
+                        horzLines: { color: '#1e1e1e' },
+                    },
+                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                    timeScale: { timeVisible: true, secondsVisible: false },
+                });
+
+                // Série principale (ligne)
+                this.candlestickSeries = this.chart.addLineSeries({
+                    color: '#26a69a',
+                    lineWidth: 2,
+                });
+
+                // EMA 20 (orange)
+                this.ema20Line = this.chart.addLineSeries({
+                    color: '#f39c12',
+                    lineWidth: 1,
+                    lineStyle: LightweightCharts.LineStyle.Solid,
+                });
+
+                // EMA 50 (bleu)
+                this.ema50Line = this.chart.addLineSeries({
+                    color: '#3498db',
+                    lineWidth: 1,
+                    lineStyle: LightweightCharts.LineStyle.Solid,
+                });
+            }
+
+            // Préparer les données selon la période
+            let data = [];
+            let ema20Data = [];
+            let ema50Data = [];
+
+            const prices = this.historique;
+            const ema20Vals = this.calculateEMA(prices, 20);
+            const ema50Vals = this.calculateEMA(prices, 50);
+
+            // Nombre de points à afficher selon la période
+            let limit = prices.length;
+            if (this.period === '1d') limit = Math.min(24, prices.length);
+            else if (this.period === '1w') limit = Math.min(7, prices.length);
+            else if (this.period === '1m') limit = Math.min(30, prices.length);
+            else if (this.period === '3m') limit = Math.min(90, prices.length);
+
+            const start = Math.max(0, prices.length - limit);
+            for (let i = start; i < prices.length; i++) {
+                // Le temps est simulé (jour avant aujourd'hui)
+                const date = new Date();
+                date.setDate(date.getDate() - (prices.length - i));
+                const time = date.toISOString().split('T')[0];
+
+                data.push({ time, value: prices[i] });
+                if (i >= 19) ema20Data.push({ time, value: ema20Vals[i] });
+                if (i >= 49) ema50Data.push({ time, value: ema50Vals[i] });
+            }
+
+            this.candlestickSeries.setData(data);
+            if (ema20Data.length > 0) this.ema20Line.setData(ema20Data);
+            if (ema50Data.length > 0) this.ema50Line.setData(ema50Data);
+        },
+
+        goBack() {
+            window.location.href = 'index.html';
+        }
     }
 }
 </script>
+
 </body>
 </html>
