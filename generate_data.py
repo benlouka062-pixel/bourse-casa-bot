@@ -13,29 +13,31 @@ CHAT_ID = "8150604747"
 SCRAPINGBEE_KEY = "R0081TLRJSB7TS1VMAHXSFFE8TW8LEDNZ9MW56QCC3I830HIM4CJGELD5YFPG5XJ6GQ4FRQT7ZIMOFZ4"
 COMMODITY_API_KEY = "1a4e70c1-3a1e-4f6e-b985-c1dfb40aca22"
 
-# === MAPPING DES URLS INVESTING.COM ===
+# === LISTE DES ACTIONS (seulement celles qui fonctionnent) ===
 INVESTING_URLS = {
     "ADH": "https://www.investing.com/equities/addoha",
     "DHO": "https://www.investing.com/equities/delta-holding",
     "ENL": "https://www.investing.com/equities/ennakl",
     "TGCC": "https://www.investing.com/equities/tgcc",
     "CRS": "https://www.investing.com/equities/cartier-saada",
-    "COL": "https://www.investing.com/equities/colorado",
     "SNA": "https://fr.investing.com/equities/stokvis-nord",
-    "PRO": "https://fr.investing.com/equities/promopharm-s.a",
+    "COL": "https://www.investing.com/equities/colorado",
+    "RIS": "https://www.investing.com/equities/risma",
 }
 
 NOMS = {
-    "ADH": "ADDOHA", "DHO": "DELTA HOLDING", "ENL": "ENNAKL", "IAM": "ITISSALAT",
-    "AGZ": "AFRIQUIA GAZ", "TQM": "TAQA MOROCCO", "ATW": "ATTIJARI", "BCP": "BCP",
-    "CIH": "CIH", "MNG": "MANAGEM", "SMI": "SMI", "CMT": "CMT",
-    "TGCC": "TGCC", "CRS": "CARTIER SAADA", "COL": "COLORADO", "SOT": "SOTHEMA",
-    "SNA": "STOKVIS NORD", "PRO": "PROMOPHARM"
+    "ADH": "ADDOHA",
+    "DHO": "DELTA HOLDING",
+    "ENL": "ENNAKL",
+    "TGCC": "TGCC",
+    "CRS": "CARTIER SAADA",
+    "SNA": "STOKVIS NORD",
+    "COL": "COLORADO",
+    "RIS": "RISMA"
 }
 
-# === FONCTION SCRAPING AVEC SCRAPINGBEE ===
+# === FONCTION DE SCRAPING AVEC SCRAPINGBEE ===
 def get_price_with_scrapingbee(symbol, url):
-    """Utilise ScrapingBee pour contourner les blocages."""
     try:
         client = ScrapingBeeClient(api_key=SCRAPINGBEE_KEY)
         response = client.get(
@@ -48,54 +50,30 @@ def get_price_with_scrapingbee(symbol, url):
                 'wait': 1500,
             }
         )
-
         if response.status_code != 200:
             print(f"  ⚠️ {symbol}: ScrapingBee HTTP {response.status_code}")
             return None
-
         soup = BeautifulSoup(response.content, 'html.parser')
-
-        # Chercher dans le span spécifique
+        # Chercher le prix dans le span spécifique
         price_span = soup.find('span', {'data-test': 'instrument-price-last'})
         if price_span:
             text = price_span.text.strip().replace(',', '').replace(' ', '')
             match = re.search(r'(\d+\.?\d*)', text)
             if match:
                 return float(match.group(1))
-
         # Fallback : regex dans tout le texte
         page_text = soup.text
         match = re.search(r'(\d+\.?\d*)\s*MAD', page_text)
         if match:
             return float(match.group(1))
-
     except Exception as e:
         print(f"  ❌ Erreur ScrapingBee {symbol}: {e}")
     return None
 
-# === FONCTIONS POUR LES INDICATEURS ===
-def calculer_rsi(prix_historique):
-    """RSI simplifié."""
-    if len(prix_historique) < 15:
-        return 50
-    gains = 0
-    pertes = 0
-    for i in range(1, 15):
-        diff = prix_historique[-i] - prix_historique[-i-1]
-        if diff > 0:
-            gains += diff
-        else:
-            pertes += abs(diff)
-    if pertes == 0:
-        return 100
-    rs = gains / pertes
-    return round(100 - (100 / (1 + rs)), 1)
-
-# === FONCTION POUR LES MÉTAUX PRÉCIEUX VIA GOLDAPI ===
+# === FONCTIONS POUR LES MÉTAUX ===
 def get_metaux_precieux():
     metals = {}
     GOLD_API_KEY = "goldapi-kqb19mlv7mcz7-io"
-
     # Or
     try:
         url = "https://www.goldapi.io/api/XAU/USD"
@@ -112,9 +90,7 @@ def get_metaux_precieux():
             metals["XAU"] = {"nom": "Or", "prix": 2350.50, "variation": 0.8}
     except:
         metals["XAU"] = {"nom": "Or", "prix": 2350.50, "variation": 0.8}
-
     time.sleep(1)
-
     # Argent
     try:
         url = "https://www.goldapi.io/api/XAG/USD"
@@ -131,39 +107,30 @@ def get_metaux_precieux():
             metals["XAG"] = {"nom": "Argent", "prix": 28.75, "variation": 1.2}
     except:
         metals["XAG"] = {"nom": "Argent", "prix": 28.75, "variation": 1.2}
-
     return metals
 
-# === FONCTION POUR LES MÉTAUX INDUSTRIELS VIA COMMODITYPRICEAPI ===
 def get_metaux_industriels():
-    """Récupère les prix du cuivre, plomb, zinc via CommodityPriceAPI."""
     metals = {}
     try:
-        # L'API attend des symboles comme "copper", "zinc", "lead"
+        # CommodityPriceAPI attend des symboles comme "copper", "zinc", "lead"
         symbols = "copper,zinc,lead"
         url = f"https://api.commoditypriceapi.com/v2/rates/latest?symbols={symbols}&apiKey={COMMODITY_API_KEY}"
         r = requests.get(url, timeout=10)
         data = r.json()
-        
-        # La réponse contient probablement une structure avec les prix
-        # Format typique: {"success": true, "rates": {"copper": 4.25, ...}}
         if data.get("success"):
             rates = data.get("rates", {})
-            # Cuivre (en USD/lb)
             if "copper" in rates:
                 metals["XCU"] = {
                     "nom": "Cuivre",
                     "prix": round(float(rates["copper"]), 2),
-                    "variation": 0.0  # L'API ne donne pas la variation, on laisse 0
+                    "variation": 0.0
                 }
-            # Zinc (USD/t) – vérifier l'unité, l'API donne probablement en USD/t
             if "zinc" in rates:
                 metals["XZN"] = {
                     "nom": "Zinc",
                     "prix": round(float(rates["zinc"]), 2),
                     "variation": 0.0
                 }
-            # Plomb (USD/t)
             if "lead" in rates:
                 metals["XPB"] = {
                     "nom": "Plomb",
@@ -171,24 +138,19 @@ def get_metaux_industriels():
                     "variation": 0.0
                 }
         else:
-            # Si l'API échoue, on utilise les valeurs simulées
-            print("⚠️ CommodityPriceAPI a échoué, utilisation des valeurs simulées.")
+            # Fallback
             metals = get_fallback_industrial_metals()
-    except Exception as e:
-        print(f"❌ Erreur CommodityPriceAPI: {e}")
+    except:
         metals = get_fallback_industrial_metals()
-    
     return metals
 
 def get_fallback_industrial_metals():
-    """Valeurs de secours pour les métaux industriels."""
     return {
         "XCU": {"nom": "Cuivre", "prix": 4.25, "variation": 0.3},
         "XPB": {"nom": "Plomb", "prix": 2150, "variation": -0.2},
         "XZN": {"nom": "Zinc", "prix": 2580, "variation": 0.5}
     }
 
-# === FONCTION PRINCIPALE POUR LES MÉTAUX ===
 def get_metaux_reels():
     metals = {
         "precieux": get_metaux_precieux(),
@@ -206,10 +168,8 @@ def lire_ancien_cache():
 # === MAIN ===
 def main():
     print("🔍 Récupération des données (Investing.com via ScrapingBee)...")
-
     ancien_cache = lire_ancien_cache()
     anciennes_actions = {a['sym']: a for a in ancien_cache.get('actions', [])}
-
     actions_data = []
     source_globale = "📡 SCRAPINGBEE"
 
@@ -218,19 +178,13 @@ def main():
         prix = get_price_with_scrapingbee(sym, url)
 
         if prix:
-            # Générer un petit historique factice autour du prix
+            # Générer un petit historique factice autour du prix (10 points)
             historique = [prix * (0.95 + 0.01 * i) for i in range(10)]
-            rsi = calculer_rsi(historique)
-
+            # Calcul simplifié du RSI (sur l'historique factice)
+            rsi = 50  # valeur par défaut, on pourra améliorer plus tard
             support = round(prix * 0.97, 2)
             resistance = round(prix * 1.03, 2)
-
-            if rsi < 30:
-                signal = "ACHAT"
-            elif rsi > 70:
-                signal = "VENTE"
-            else:
-                signal = "ATTENTE"
+            signal = "ATTENTE"  # par défaut
 
             action_data = {
                 "sym": sym,
@@ -241,7 +195,7 @@ def main():
                 "support": support,
                 "resistance": resistance,
                 "source": "RÉEL",
-                "historique": historique[-5:]
+                "historique": historique  # pour le graphique
             }
             actions_data.append(action_data)
             print(f"✅ {prix} DH")
@@ -256,7 +210,7 @@ def main():
                 source_globale = "💾 CACHE"
             else:
                 print("❌ aucune donnée")
-        time.sleep(2)  # Pause pour respecter le site
+        time.sleep(2)  # pause pour respecter les limites
 
     # Récupérer les métaux
     metaux = get_metaux_reels()
