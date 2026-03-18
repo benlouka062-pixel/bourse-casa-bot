@@ -1,5 +1,5 @@
 {
-  "date": "18/03/2026 14:51:00",
+  "date": "18/03/2026 18:11:46",
   "source": "\ud83d\udcbe CACHE",
   "masi": null,
   "volume": "N/A",
@@ -13,7 +13,7 @@
       "signal": "ATTENTE",
       "support": 29.05,
       "resistance": 30.85,
-      "source": "R\u00c9EL",
+      "source": "\ud83d\udcbe CACHE",
       "historique": [
         29.95,
         30.2495,
@@ -30,7 +30,7 @@
       "signal": "ATTENTE",
       "support": 56.74,
       "resistance": 60.26,
-      "source": "R\u00c9EL",
+      "source": "\ud83d\udcbe CACHE",
       "historique": [
         58.5,
         59.085,
@@ -47,7 +47,7 @@
       "signal": "ATTENTE",
       "support": 47.05,
       "resistance": 49.95,
-      "source": "R\u00c9EL",
+      "source": "\ud83d\udcbe CACHE",
       "historique": [
         48.5,
         48.985,
@@ -95,12 +95,12 @@
     "precieux": {
       "XAU": {
         "nom": "Or",
-        "prix": 4863.62,
+        "prix": 4881.62,
         "variation": 0.8
       },
       "XAG": {
         "nom": "Argent",
-        "prix": 76.46,
+        "prix": 76.92,
         "variation": 1.2
       }
     },
