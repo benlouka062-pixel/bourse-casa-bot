@@ -1,5 +1,5 @@
 {
-  "date": "18/03/2026 22:03:04",
+  "date": "19/03/2026 10:06:55",
   "source": "\ud83d\udcbe CACHE",
   "masi": null,
   "volume": "N/A",
@@ -95,12 +95,12 @@
     "precieux": {
       "XAU": {
         "nom": "Or",
-        "prix": 4837.05,
+        "prix": 4713.72,
         "variation": 0.8
       },
       "XAG": {
         "nom": "Argent",
-        "prix": 75.67,
+        "prix": 71.82,
         "variation": 1.2
       }
     },
